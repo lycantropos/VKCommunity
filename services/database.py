@@ -3,8 +3,9 @@ import logging
 import MySQLdb as Mdb
 
 from models import Photo
-from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, RESTRICTED_ALBUMS
+from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 from utils import DATE_FORMAT
+
 # TODO: rewrite this module, define rules of database filling up
 logging.basicConfig(
     format=u'%(name)-12s: %(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
@@ -123,6 +124,9 @@ def remove_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
                  ON all_duplicates.id = grouped_duplicates.id
                  WHERE grouped_duplicates.id IS NULL)""".format(table_name)
         cur.execute(req)
+
+
+RESTRICTED_ALBUMS = ['ябынестал', 'ммм', 'momspaghetti', 'разное']
 
 
 def get_random_unposted_photos(num=1):

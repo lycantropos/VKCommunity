@@ -1,0 +1,158 @@
+import logging
+
+import MySQLdb as Mdb
+
+from models import Photo
+from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, RESTRICTED_ALBUMS
+from utils import DATE_FORMAT
+# TODO: rewrite this module, define rules of database filling up
+logging.basicConfig(
+    format=u'%(name)-12s: %(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
+    level=logging.INFO,
+    filename='database.log', filemode='w'
+)
+logger_db = logging.getLogger(__name__)
+
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+# set a format which is simpler for console use
+formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+# tell the handler to use this format
+console.setFormatter(formatter)
+# add the handler to the root logger
+logging.getLogger().addHandler(console)
+
+INNER_PHOTOS_TABLE_NAME = "inner_photos"
+OUTER_PHOTOS_TABLE_NAME = "outer_photos"
+
+MYSQL_PHOTOS_TABLE_UPDATE_REQUEST = '''UPDATE {}
+SET vk_id = {{vk_id}}, owner_id = {{owner_id}}, user_id = {{user_id}},
+album = '{{album}}', comment = '{{text}}', post_date = {{post_date}} WHERE link LIKE '%{{link}}%';'''
+
+INNER_PHOTOS_TABLE_UPDATE_REQUEST = MYSQL_PHOTOS_TABLE_UPDATE_REQUEST.format(INNER_PHOTOS_TABLE_NAME)
+
+INNER_PHOTOS_TABLE_INSERT_REQUEST = '''INSERT INTO {}
+(vk_id, owner_id, user_id, album, link, comment, post_date, is_posted)
+VALUES ({{vk_id}}, {{owner_id}}, {{user_id}}, {{album}}, {{link}}, {{comment}}, {{post_date}}, FALSE);'''.format(
+    INNER_PHOTOS_TABLE_NAME
+)
+
+OUTER_PHOTOS_TABLE_UPDATE_REQUEST = MYSQL_PHOTOS_TABLE_UPDATE_REQUEST.format(OUTER_PHOTOS_TABLE_NAME)
+
+OUTER_PHOTOS_TABLE_INSERT_REQUEST = '''INSERT INTO {}
+(vk_id, owner_id, user_id, album, link, comment, post_date, is_posted)
+VALUES ({{vk_id}}, {{owner_id}}, {{user_id}}, {{album}}, {{link}}, {{comment}}, {{post_date}}, FALSE);'''.format(
+    INNER_PHOTOS_TABLE_NAME
+)
+
+
+def create_inner_photos_table():
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME)
+    with con:
+        cur = con.cursor()
+        cur.execute("""DROP TABLE IF EXISTS {}""".format(INNER_PHOTOS_TABLE_NAME))
+        cur.execute("""CREATE TABLE {}
+                 (id INT PRIMARY KEY AUTO_INCREMENT,
+                 vk_id INT,
+                 owner_id INT,
+                 user_id INT,
+                 album TEXT,
+                 link TEXT,
+                 comment TEXT,
+                 post_date DATETIME,
+                 is_posted TINYINT(1)) DEFAULT CHARSET=utf8""".format(INNER_PHOTOS_TABLE_NAME))
+
+
+def create_outer_photos_table():
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME)
+    with con:
+        cur = con.cursor()
+        cur.execute("""DROP TABLE IF EXISTS {}""".format(OUTER_PHOTOS_TABLE_NAME))
+        cur.execute("""CREATE TABLE {}
+                 (id INT PRIMARY KEY AUTO_INCREMENT,
+                 vk_id INT,
+                 owner_id INT,
+                 user_id INT,
+                 album TEXT,
+                 link TEXT,
+                 comment TEXT,
+                 post_date DATETIME) DEFAULT CHARSET=utf8""".format(OUTER_PHOTOS_TABLE_NAME))
+
+
+def read_table(table_name=INNER_PHOTOS_TABLE_NAME, limit=100):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME)
+    with con:
+        cur = con.cursor()
+        req = """SELECT * FROM {} LIMIT {}""".format(table_name, limit)
+        cur.execute(req)
+        rows = cur.fetchall()
+
+        for row in rows:
+            logger_db.info(row)
+
+
+def check_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME)
+    with con:
+        cur = con.cursor()
+
+        req = """SELECT vk_id, owner_id, COUNT(*) FROM {} GROUP BY vk_id, owner_id HAVING COUNT(*) > 1""".format(
+            table_name
+        )
+        cur.execute(req)
+        res = cur.fetchall()
+
+        for duplicate in res:
+            logger_db.info(duplicate)
+        return res
+
+
+def remove_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, use_unicode=True, charset="utf8")
+    with con:
+        cur = con.cursor()
+        req = """DELETE FROM {0} WHERE id IN (
+                 SELECT all_duplicates.id FROM (
+                 SELECT id FROM {0} WHERE (vk_id, owner_id) IN (
+                 SELECT vk_id, owner_id FROM {0} GROUP BY vk_id, owner_id having count(*) > 1
+                 )
+                 ) AS all_duplicates
+                 LEFT JOIN (
+                 SELECT id FROM {0} GROUP BY vk_id, owner_id having count(*) > 1
+                 ) AS grouped_duplicates
+                 ON all_duplicates.id = grouped_duplicates.id
+                 WHERE grouped_duplicates.id IS NULL)""".format(table_name)
+        cur.execute(req)
+
+
+def get_random_unposted_photos(num=1):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, use_unicode=True, charset="utf8")
+    with con:
+        cur = con.cursor()
+        cond = """ AND album != '""" + """' AND album != '""".join(RESTRICTED_ALBUMS) + """' """
+        req = """SELECT * FROM {} WHERE is_posted = 0""".format(
+            INNER_PHOTOS_TABLE_NAME
+        ) + cond + """ ORDER BY RAND() LIMIT {}""".format(num)
+        cur.execute(req)
+        raw_photos_list = cur.fetchall()
+
+        photos = list(
+            Photo(
+                raw_photo[1], raw_photo[2], raw_photo[3], raw_photo[4],
+                raw_photo[5], raw_photo[6], raw_photo[7].strftime(DATE_FORMAT)
+            )
+            for raw_photo in raw_photos_list
+        )
+        return photos
+
+
+def set_posted(key, value):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME)
+    with con:
+        cur = con.cursor()
+        req = """UPDATE {} SET is_posted = 1 WHERE {} = {}""".format(INNER_PHOTOS_TABLE_NAME, key, value)
+        cur.execute(req)
+
+
+if __name__ == '__main__':
+    create_outer_photos_table()

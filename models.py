@@ -26,8 +26,8 @@ class Photo:
 
     def get_image_name(self) -> str:
         photo_url = self.link
-        photo_filename = photo_url.split('/')[-1]
-        return photo_filename
+        image_name = photo_url.split('/')[-1]
+        return image_name
 
     def download(self, save_path: str):
         photo_link = self.link

@@ -2,13 +2,6 @@ import logging
 from datetime import datetime
 from time import sleep
 
-from settings import DATE_FORMAT
-
-
-def get_raw_vk_object_date(raw_vk_object: dict) -> str:
-    raw_vk_object_date = datetime.fromtimestamp(raw_vk_object['date']).strftime(DATE_FORMAT)
-    return raw_vk_object_date
-
 
 def download_vk_objects(photos: list, save_path: str):
     last_download_time = datetime.utcnow()

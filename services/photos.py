@@ -5,7 +5,7 @@ import MySQLdb as Mdb
 from models import Photo
 from services.database import (INNER_PHOTOS_TABLE_INSERT_REQUEST, INNER_PHOTOS_TABLE_UPDATE_REQUEST,
                                OUTER_PHOTOS_TABLE_UPDATE_REQUEST, OUTER_PHOTOS_TABLE_INSERT_REQUEST)
-from services.vk_objects import get_raw_vk_object_date
+from utils.utils import get_date_from_millis
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 from utils import find_file, check_dir, get_year_month_date
 
@@ -41,7 +41,7 @@ def get_photos_from_raw(raw_photos: list, album_title: str) -> list:
             int(raw_photo.pop('user_id', 0)), album_title,
             get_highest_resolution_raw_photo_link(raw_photo),
             raw_photo['text'],
-            get_raw_vk_object_date(raw_photo)
+            get_date_from_millis(raw_photo['date'])
         )
         for raw_photo in raw_photos
     )

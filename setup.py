@@ -1,9 +1,9 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name='vk_community',
     version='1.0.0',
-    packages=['vk_community'],
+    packages=find_packages(),
     url='https://github.com/lycantropos/VKCommunity',
     license='GNU GPL',
     author='ace',

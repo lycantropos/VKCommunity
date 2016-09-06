@@ -1,10 +1,13 @@
-## Installing the package on Ubuntu 14.04
+## Installing the application on Ubuntu 14.04
+Everywhere onwards we assuming that `vk-community/` is an installation directory and
+`vk-community/` is a conventional sign for the full path to installation directory.
 
 ### Installing required environment
 
 Install relational database management system `MySQL`
 and `libmysqlclient-dev` package for `mysql-config` command support
-(`mysqlclient` package requirement)
+(`mysqlclient` package requirement):
+
 ```bash
 sudo apt-get install -y mysql-server
 sudo apt-get install -y libmysqlclient-dev
@@ -19,7 +22,7 @@ sudo apt-get update
 sudo apt-get install -y python3.5 python3.5-dev
 ```
 
-Install `Python 3.5` package manager - `pip` and upgrade it
+Install `Python 3.5` package manager - `pip` and upgrade it:
 
 ```bash
 sudo apt-get install -y python3-pip
@@ -32,13 +35,34 @@ Install version control system - `git`:
 sudo apt-get install -y git
 ```
 
-### Installing the package
-Install manually using `pip` and `git`
+### Installing the application
+Create and switch to the application directory:
 
 ```bash
-sudo python3.5 -m pip install git+https://github.com/lycantropos/VKCommunity.git#egg=vk_community
+mkdir vk-community
+cd vk-community
 ```
-or add next line to `requirements.txt`
+
+Initialize the application:
 ```bash
-git+https://github.com/lycantropos/VKCommunity.git#egg=vk_community
+git clone https://github.com/lycantropos/VKCommunity.git
+```
+
+#### Setting up the configuration files
+
+Make a copy of developer configuration files:
+```bash
+cp empty_configuration.conf configuration.conf
+```
+
+Make changes in configuration files `configuration.conf`.
+The settings are read once when the application starts.
+After updating settings, you must restart the application.
+
+### Building the application
+
+Update/install required `Python 3.5` packages:
+
+```bash
+sudo python3.5 -m pip install -r requirements.txt
 ```

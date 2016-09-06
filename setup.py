@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name='vk_community',
     version='1.0.0',
-    packages=['tests', 'utils', 'services'],
+    packages=['vk_community'],
     url='https://github.com/lycantropos/VKCommunity',
     license='GNU GPL',
     author='ace',

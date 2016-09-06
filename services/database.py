@@ -3,7 +3,7 @@ import logging
 import MySQLdb as Mdb
 
 from models import Photo
-from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
+from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, DATE_FORMAT
 from utils import DATE_FORMAT
 
 # TODO: rewrite this module, define rules of database filling up
@@ -160,3 +160,4 @@ def set_posted(key, value):
 
 if __name__ == '__main__':
     create_outer_photos_table()
+    create_inner_photos_table()

@@ -9,7 +9,8 @@ from models import Photo
 from services.database import (INNER_PHOTOS_TABLE_INSERT_REQUEST, INNER_PHOTOS_TABLE_UPDATE_REQUEST,
                                OUTER_PHOTOS_TABLE_UPDATE_REQUEST, OUTER_PHOTOS_TABLE_INSERT_REQUEST)
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
-from utils import find_file, DATE_FORMAT, check_dir, get_year_month_date
+from utils import find_file, check_dir, get_year_month_date
+from services.vk_objects import get_raw_vk_object_date
 
 
 def download_photos(photos: list, save_path: str):
@@ -71,7 +72,7 @@ def get_photos_from_raw(raw_photos: list, album_title: str) -> list:
             int(raw_photo.pop('user_id', 0)), album_title,
             get_highest_resolution_raw_photo_link(raw_photo),
             raw_photo['text'],
-            get_raw_photo_date(raw_photo)
+            get_raw_vk_object_date(raw_photo)
         )
         for raw_photo in raw_photos
     )
@@ -96,11 +97,6 @@ def get_raw_photo_link_keys(raw_photo: dict) -> list:
         if RAW_PHOTO_LINK_KEY_PREFIX in raw_photo_key
     )
     return raw_photo_link_keys
-
-
-def get_raw_photo_date(raw_photo: dict) -> str:
-    raw_photo_date = datetime.fromtimestamp(raw_photo['date']).strftime(DATE_FORMAT)
-    return raw_photo_date
 
 
 def get_photos_year_month_dates(photos: list) -> set:

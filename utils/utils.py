@@ -2,6 +2,8 @@ import os
 import threading
 from urllib.request import urlopen
 
+from settings import MYSQL_DATE_SEP
+
 
 def find_file(name, path):
     for root, dirs, files in os.walk(path):
@@ -38,11 +40,6 @@ def make_periodic(delay: int):
         return launched_periodically
 
     return launch_periodically
-
-
-MYSQL_DATE_SEP = '-'
-MYSQL_DATE_ORDER = ['%Y', '%m', '%d']
-DATE_FORMAT = MYSQL_DATE_SEP.join(MYSQL_DATE_ORDER)
 
 
 def get_year_month_date(date: str, sep='.') -> str:

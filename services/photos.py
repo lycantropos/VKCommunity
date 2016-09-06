@@ -1,5 +1,7 @@
+import logging
 import shutil
 from datetime import datetime
+from time import sleep
 
 import MySQLdb as Mdb
 
@@ -11,8 +13,20 @@ from utils import find_file, DATE_FORMAT, check_dir, get_year_month_date
 
 
 def download_photos(photos: list, save_path: str):
+    last_download_time = datetime.utcnow()
     for photo in photos:
-        photo.download(save_path)
+        try:
+            # we can send request to VK servers only 3 times a second
+            time_elapsed_since_last_download = (datetime.utcnow() - last_download_time).total_seconds()
+            if time_elapsed_since_last_download < 0.33:
+                sleep(0.33 - time_elapsed_since_last_download)
+            last_download_time = datetime.utcnow()
+
+            photo.download(save_path)
+        except OSError as e:
+            # e.g. raises when there is no photo on the server anymore
+            logging.info(photo)
+            logging.exception(e)
 
 
 def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_photos_table: bool):

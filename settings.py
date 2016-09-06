@@ -2,7 +2,10 @@ import configparser
 import os
 
 CONFIGURATION_FILE_NAME = 'configuration.conf'
-CONFIGURATION_FILE_PATH = os.path.join(os.getcwd(), CONFIGURATION_FILE_NAME)
+CURRENT_FILE_PATH = os.path.realpath(__file__)
+CURRENT_FILE_ABSPATH = os.path.abspath(CURRENT_FILE_PATH)
+CURRENT_FILE_DIR = os.path.dirname(CURRENT_FILE_ABSPATH)
+CONFIGURATION_FILE_PATH = os.path.join(CURRENT_FILE_DIR, CONFIGURATION_FILE_NAME)
 config = configparser.ConfigParser()
 config.read(CONFIGURATION_FILE_PATH)
 

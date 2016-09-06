@@ -1,7 +1,5 @@
 import os
 import threading
-from datetime import datetime
-from time import sleep
 from urllib.request import urlopen
 
 
@@ -18,16 +16,8 @@ def check_dir(folder_path: str, *subfolders):
         os.mkdir(full_path)
 
 
-LAST_DOWNLOAD_TIME = datetime.utcnow()
-
-
 def download(link: str, save_path: str):
     if not os.path.exists(save_path):
-        global LAST_DOWNLOAD_TIME
-        time_elapsed_since_last_download = (datetime.utcnow() - LAST_DOWNLOAD_TIME).total_seconds()
-        if time_elapsed_since_last_download < 0.3:
-            sleep(0.3 - time_elapsed_since_last_download)
-        LAST_DOWNLOAD_TIME = datetime.utcnow()
         response = urlopen(link)
         if response.status == 200:
             with open(save_path, 'wb') as out:

@@ -42,3 +42,6 @@ class Photo:
         with open(image_path, 'rb') as marked_image:
             image_content = marked_image.read()
             return image_content
+
+    def __str__(self):
+        return self.link

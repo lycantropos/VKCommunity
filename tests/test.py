@@ -20,6 +20,6 @@ console.setFormatter(formatter)
 logging.getLogger().addHandler(console)
 
 if __name__ == '__main__':
-    community_app = CommunityApp(GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
+    community_app = CommunityApp(APP_ID, GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
     params = dict(owner_id='-46521427')
     community_app.load_community_wall_photos(params)

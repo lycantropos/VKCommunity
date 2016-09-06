@@ -12,7 +12,7 @@ photos_params = dict(owner_id='-' + GROUP_ID, offset=0, need_system=1, need_cove
 
 
 class CommunityApp(App):
-    def __init__(self, group_id: str, app_id='', user_login='', user_password='', scope='', access_token='',
+    def __init__(self, app_id: int, group_id: str, user_login='', user_password='', scope='', access_token='',
                  api_version='5.53'):
         if access_token:
             super().__init__(access_token=access_token, api_version=api_version)
@@ -52,8 +52,6 @@ class CommunityApp(App):
             params['owner_id'] = '-' + self.group_id
         group_id = params['owner_id'].replace('-', '')
 
-        is_inner = group_id == self.group_id
-
         values = dict(
             group_id=group_id,
             fields='screen_name'
@@ -66,6 +64,7 @@ class CommunityApp(App):
 
         albums = self.get_items('photos.getAlbums', params)
 
+        albums_photos = dict()
         for album in albums:
             album_title = album['title']
             album_path = os.path.join(save_path, album_title)
@@ -74,10 +73,11 @@ class CommunityApp(App):
             params['album_id'] = album['id']
             raw_photos = self.get_items('photos.get', params)
             album_photos = get_photos_from_raw(raw_photos, album_title)
+            albums_photos[album_title] = album_photos
 
             check_photos_year_month_dates_dir(album_photos, album_path)
             download_photos(album_photos, save_path)
-            synchronize_photos_with_photos_table(album_photos, save_path, is_inner)
+        return albums_photos
 
     def get_community_info(self, values: dict):
         community_info = self.api_session.groups.getById(**values)[0]
@@ -141,5 +141,5 @@ class CommunityApp(App):
 
 
 if __name__ == '__main__':
-    community_app = CommunityApp(GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
+    community_app = CommunityApp(APP_ID, GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
     community_app.load_community_albums_photos(dict())

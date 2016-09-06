@@ -4,7 +4,8 @@ import requests
 from vk_app import App
 
 from services.database import get_random_unposted_photos
-from services.photos import download_photos, get_raw_photos, get_photos_from_raw, check_photos_year_month_dates_dir, synchronize_photos_with_photos_table
+from services.photos import get_raw_photos_from_posts, get_photos_from_raw, check_photos_year_month_dates_dir, synchronize_photos_with_photos_table
+from services.vk_objects import download_vk_objects, get_raw_objects_from_posts
 from settings import GROUP_ID, DST_PATH, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
 from utils import check_dir
 
@@ -38,11 +39,11 @@ class CommunityApp(App):
         check_dir(album_path)
 
         community_wall_posts = self.get_items('wall.get', params)
-        raw_community_wall_photos = get_raw_photos(community_wall_posts)
+        raw_community_wall_photos = get_raw_objects_from_posts(community_wall_posts, 'photo')
         community_wall_photos = get_photos_from_raw(raw_community_wall_photos, album_title)
 
         check_photos_year_month_dates_dir(community_wall_photos, album_path)
-        download_photos(community_wall_photos, save_path)
+        download_vk_objects(community_wall_photos, save_path)
 
     def load_community_albums_photos(self, params: dict):
         if 'owner_id' not in params:
@@ -73,7 +74,7 @@ class CommunityApp(App):
             albums_photos[album_title] = album_photos
 
             check_photos_year_month_dates_dir(album_photos, album_path)
-            download_photos(album_photos, save_path)
+            download_vk_objects(album_photos, save_path)
         return albums_photos
 
     def get_community_info(self, values: dict):

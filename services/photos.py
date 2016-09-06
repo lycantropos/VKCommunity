@@ -1,33 +1,13 @@
-import logging
 import shutil
-from datetime import datetime
-from time import sleep
 
 import MySQLdb as Mdb
 
 from models import Photo
 from services.database import (INNER_PHOTOS_TABLE_INSERT_REQUEST, INNER_PHOTOS_TABLE_UPDATE_REQUEST,
                                OUTER_PHOTOS_TABLE_UPDATE_REQUEST, OUTER_PHOTOS_TABLE_INSERT_REQUEST)
+from services.vk_objects import get_raw_vk_object_date
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 from utils import find_file, check_dir, get_year_month_date
-from services.vk_objects import get_raw_vk_object_date
-
-
-def download_photos(photos: list, save_path: str):
-    last_download_time = datetime.utcnow()
-    for photo in photos:
-        try:
-            # we can send request to VK servers only 3 times a second
-            time_elapsed_since_last_download = (datetime.utcnow() - last_download_time).total_seconds()
-            if time_elapsed_since_last_download < 0.33:
-                sleep(0.33 - time_elapsed_since_last_download)
-            last_download_time = datetime.utcnow()
-
-            photo.download(save_path)
-        except OSError as e:
-            # e.g. raises when there is no photo on the server anymore
-            logging.info(photo)
-            logging.exception(e)
 
 
 def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_photos_table: bool):
@@ -52,17 +32,6 @@ def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_
                 req = photos_table_insert_request.format(**photo.__dict__)
 
             cur.execute(req)
-
-
-def get_raw_photos(posts: list) -> list:
-    raw_photos = list(
-        attachment['photo']
-        for post in posts
-        if 'attachments' in post
-        for attachment in post['attachments']
-        if 'photo' in attachment
-    )
-    return raw_photos
 
 
 def get_photos_from_raw(raw_photos: list, album_title: str) -> list:

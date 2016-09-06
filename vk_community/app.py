@@ -3,8 +3,8 @@ import os
 import requests
 from vk_app import App
 
+from services.photos import get_photos_from_raw, check_photos_year_month_dates_dir
 from services.database import get_random_unposted_photos
-from services.photos import get_raw_photos_from_posts, get_photos_from_raw, check_photos_year_month_dates_dir, synchronize_photos_with_photos_table
 from services.vk_objects import download_vk_objects, get_raw_objects_from_posts
 from settings import GROUP_ID, DST_PATH, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
 from utils import check_dir

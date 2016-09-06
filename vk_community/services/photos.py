@@ -1,13 +1,12 @@
 import shutil
 
 import MySQLdb as Mdb
+from utils import find_file, check_dir, get_year_month_date, get_date_from_millis
 
 from models import Photo
 from services.database import (INNER_PHOTOS_TABLE_INSERT_REQUEST, INNER_PHOTOS_TABLE_UPDATE_REQUEST,
                                OUTER_PHOTOS_TABLE_UPDATE_REQUEST, OUTER_PHOTOS_TABLE_INSERT_REQUEST)
-from utils.utils import get_date_from_millis
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
-from utils import find_file, check_dir, get_year_month_date
 
 
 def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_photos_table: bool):

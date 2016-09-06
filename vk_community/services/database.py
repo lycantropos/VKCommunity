@@ -4,7 +4,6 @@ import MySQLdb as Mdb
 
 from models import Photo
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
-from utils.utils import DATE_FORMAT
 from utils import DATE_FORMAT
 
 # TODO: rewrite this module, define rules of database filling up

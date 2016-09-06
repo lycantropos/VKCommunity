@@ -5,8 +5,6 @@ import PIL.Image
 import numpy as np
 from skimage import img_as_float
 
-from settings import DST_PATH, SRC_PATH
-
 logging.basicConfig(
     format=u'%(name)-12s: %(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
     level=logging.INFO,

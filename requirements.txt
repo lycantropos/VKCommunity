@@ -1,1 +1,0 @@
-git+https://github.com/lycantropos/VKApp.git#egg=vk_app

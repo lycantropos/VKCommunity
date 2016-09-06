@@ -1,7 +1,6 @@
 import os
 
-from utils import get_year_month_date, get_valid_folders
-from utils.utils import download
+from utils import get_year_month_date, get_valid_folders, download
 
 
 class Photo:

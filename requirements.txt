@@ -3,4 +3,4 @@ mysqlclient
 numpy
 scikit-image
 Pillow
-https://github.com/lycantropos/VKApp.git#egg=vk_app
+git+https://github.com/lycantropos/VKApp.git#egg=vk_app

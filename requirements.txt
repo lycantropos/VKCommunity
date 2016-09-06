@@ -1,0 +1,6 @@
+requests
+mysqlclient
+numpy
+scikit-image
+Pillow
+https://github.com/lycantropos/VKApp.git#egg=vk_app

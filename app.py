@@ -14,10 +14,7 @@ photos_params = dict(owner_id='-' + GROUP_ID, offset=0, need_system=1, need_cove
 class CommunityApp(App):
     def __init__(self, app_id: int, group_id: str, user_login='', user_password='', scope='', access_token='',
                  api_version='5.53'):
-        if access_token:
-            super().__init__(access_token=access_token, api_version=api_version)
-        else:
-            super().__init__(app_id, user_login, user_password, scope, api_version=api_version)
+        super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
 
     def load_community_wall_photos(self, params: dict):

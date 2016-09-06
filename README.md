@@ -5,8 +5,7 @@ Everywhere onwards we assuming that `vk-community/` is an installation directory
 ### Installing required environment
 
 Install relational database management system `MySQL`
-and `libmysqlclient-dev` package for `mysql-config` command support
-(`mysqlclient` package requirement):
+and `libmysqlclient-dev` package (`mysqlclient` package requirement):
 
 ```bash
 sudo apt-get install -y mysql-server

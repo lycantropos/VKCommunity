@@ -32,6 +32,7 @@ WATERMARK_DIR_PATH = os.path.join(os.getcwd(), 'utils')
 WATERMARK_FILE_NAME = 'watermark.png'
 WATERMARK_PATH = os.path.join(WATERMARK_DIR_PATH, WATERMARK_FILE_NAME)
 
-MYSQL_DATE_SEP = '-'
-MYSQL_DATE_ORDER = ['%Y', '%m', '%d']
-DATE_FORMAT = MYSQL_DATE_SEP.join(MYSQL_DATE_ORDER)
+# hyphen was chosen because its MySQL default DATE separator
+DATE_SEP = '-'
+DATE_ORDER = ['%Y', '%m', '%d']
+DATE_FORMAT = DATE_SEP.join(DATE_ORDER)

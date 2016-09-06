@@ -2,7 +2,7 @@ import os
 import threading
 from urllib.request import urlopen
 
-from settings import MYSQL_DATE_SEP
+from settings import DATE_SEP
 
 
 def find_file(name, path):
@@ -43,7 +43,7 @@ def make_periodic(delay: int):
 
 
 def get_year_month_date(date: str, sep='.') -> str:
-    year_month_date = sep.join(date.split(MYSQL_DATE_SEP)[:-1])
+    year_month_date = sep.join(date.split(DATE_SEP)[:-1])
     return year_month_date
 
 

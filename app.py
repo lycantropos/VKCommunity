@@ -1,13 +1,13 @@
 import os
 
 import requests
-from vk_app import App
+from vk_app import App, download_vk_objects
+from vk_app.utils import check_dir
 
-from services.photos import get_photos_from_raw, check_photos_year_month_dates_dir
+from models import Photo
 from services.database import get_random_unposted_photos
-from services.vk_objects import download_vk_objects, get_raw_objects_from_posts
 from settings import GROUP_ID, DST_PATH, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
-from utils import check_dir
+from utils import check_photos_year_month_dates_dir
 
 photos_params = dict(owner_id='-' + GROUP_ID, offset=0, need_system=1, need_covers=0, photo_sizes=0)
 
@@ -39,11 +39,15 @@ class CommunityApp(App):
         check_dir(album_path)
 
         community_wall_posts = self.get_items('wall.get', params)
-        raw_community_wall_photos = get_raw_objects_from_posts(community_wall_posts, 'photo')
-        community_wall_photos = get_photos_from_raw(raw_community_wall_photos, album_title)
+        raw_photos = Photo.get_raw_from_posts(community_wall_posts)
 
-        check_photos_year_month_dates_dir(community_wall_photos, album_path)
-        download_vk_objects(community_wall_photos, save_path)
+        for raw_photo in raw_photos:
+            raw_photo['album'] = album_title
+
+        photos = Photo.get_vk_objects_from_raw(raw_photos)
+
+        check_photos_year_month_dates_dir(photos, album_path)
+        download_vk_objects(photos, save_path)
 
     def load_community_albums_photos(self, params: dict):
         if 'owner_id' not in params:
@@ -70,7 +74,9 @@ class CommunityApp(App):
 
             params['album_id'] = album['id']
             raw_photos = self.get_items('photos.get', params)
-            album_photos = get_photos_from_raw(raw_photos, album_title)
+            for raw_photo in raw_photos:
+                raw_photo['album'] = album_title
+            album_photos = Photo.get_vk_objects_from_raw(raw_photos)
             albums_photos[album_title] = album_photos
 
             check_photos_year_month_dates_dir(album_photos, album_path)

@@ -1,10 +1,11 @@
 import logging
+import shutil
 
 import MySQLdb as Mdb
+from vk_app.utils import find_file, DATE_FORMAT
 
 from models import Photo
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
-from utils import DATE_FORMAT
 
 # TODO: rewrite this module, define rules of database filling up
 logging.basicConfig(
@@ -161,3 +162,27 @@ def set_posted(key, value):
 if __name__ == '__main__':
     create_outer_photos_table()
     create_inner_photos_table()
+
+
+def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_photos_table: bool):
+    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, charset="utf8")
+    if is_inner_photos_table:
+        photos_table_update_request = INNER_PHOTOS_TABLE_UPDATE_REQUEST
+        photos_table_insert_request = INNER_PHOTOS_TABLE_INSERT_REQUEST
+    else:
+        photos_table_update_request = OUTER_PHOTOS_TABLE_UPDATE_REQUEST
+        photos_table_insert_request = OUTER_PHOTOS_TABLE_INSERT_REQUEST
+
+    with con:
+        cur = con.cursor()
+        for photo in photos:
+            image_path = photo.get_image_path(save_path)
+            image_name = photo.get_image_name()
+            old_image_path = find_file(image_name, save_path)
+            if old_image_path:
+                shutil.move(old_image_path, image_path)
+                req = photos_table_update_request.format(**photo.__dict__)
+            else:
+                req = photos_table_insert_request.format(**photo.__dict__)
+
+            cur.execute(req)

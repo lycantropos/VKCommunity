@@ -31,9 +31,9 @@ class Photo:
 
     def download(self, save_path: str):
         photo_link = self.link
-        img_path = self.get_image_path(save_path)
+        image_path = self.get_image_path(save_path)
 
-        download(photo_link, img_path)
+        download(photo_link, image_path)
 
     def get_image_content(self, images_path: str, is_image_marked=True) -> bytearray:
         image_path = self.get_image_path(images_path)

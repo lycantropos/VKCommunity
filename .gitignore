@@ -1,7 +1,7 @@
 .git/
 .idea/
-*.pyc
 .cache/
 *__pycache__/
 *.log
-/configuration.conf
+logs
+configuration.conf

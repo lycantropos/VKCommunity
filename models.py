@@ -16,7 +16,7 @@ class Photo(VKObject):
         self.post_date = post_date
 
     def __str__(self):
-        return self.link
+        return "Photo from '{}' album".format(self.album)
 
     def download(self, save_path: str):
         photo_link = self.link

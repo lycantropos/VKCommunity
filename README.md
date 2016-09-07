@@ -1,5 +1,5 @@
 ## Installing the application on Ubuntu 14.04
-Everywhere onwards we assuming that `vk-community/` is an installation directory and
+Everywhere onwards it is assumed that `vk-community/` is an installation directory where
 `vk-community/` is a conventional sign for the full path to installation directory.
 
 ### Installing required environment
@@ -47,10 +47,14 @@ Initialize the application:
 git clone https://github.com/lycantropos/VKCommunity.git
 ```
 
+**Important**
+In the following instructions it is assumed that commands are executed from `vk-community/` directory.
+
 #### Setting up the configuration files
 
 Make a copy of developer configuration files:
 ```bash
+cd configurations
 cp empty_configuration.conf configuration.conf
 ```
 

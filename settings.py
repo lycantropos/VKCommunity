@@ -4,8 +4,9 @@ import os
 CONFIGURATION_FILE_NAME = 'configuration.conf'
 CURRENT_FILE_PATH = os.path.realpath(__file__)
 CURRENT_FILE_ABSPATH = os.path.abspath(CURRENT_FILE_PATH)
-CURRENT_FILE_DIR = os.path.dirname(CURRENT_FILE_ABSPATH)
-CONFIGURATION_FILE_PATH = os.path.join(CURRENT_FILE_DIR, CONFIGURATION_FILE_NAME)
+BASE_DIR = os.path.dirname(CURRENT_FILE_ABSPATH)
+CONFIGURATION_FILE_FOLDER = 'configurations'
+CONFIGURATION_FILE_PATH = os.path.join(BASE_DIR, CONFIGURATION_FILE_FOLDER, CONFIGURATION_FILE_NAME)
 config = configparser.ConfigParser()
 config.read(CONFIGURATION_FILE_PATH)
 
@@ -27,6 +28,10 @@ DB_HOST = database.get('db_host')
 DB_USER_NAME = database.get('db_user_name')
 DB_USER_PASSWORD = database.get('db_user_password')
 DB_NAME = database.get('db_name')
+
+logger = config['logger']
+LOGS_PATH = logger.get('logs_path')
+LOGGING_CONFIG_PATH = logger.get('logging_config_path')
 
 WATERMARK_DIR_PATH = os.path.join(os.getcwd(), 'utils')
 WATERMARK_FILE_NAME = 'watermark.png'

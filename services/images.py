@@ -1,25 +1,8 @@
-import logging
 import os
 
 import PIL.Image
 import numpy as np
 from skimage import img_as_float
-
-logging.basicConfig(
-    format=u'%(name)-12s: %(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
-    level=logging.INFO,
-    filename=u'watermark.log', filemode='w'
-)
-logger_watermark = logging.getLogger(__name__)
-
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-# set a format which is simpler for console use
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-# tell the handler to use this format
-console.setFormatter(formatter)
-# add the handler to the root logger
-logging.getLogger().addHandler(console)
 
 
 def alpha_composite(src: np.ndarray, dst: np.ndarray) -> np.ndarray:

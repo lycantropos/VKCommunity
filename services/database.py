@@ -1,4 +1,3 @@
-import logging
 import shutil
 
 import MySQLdb as Mdb
@@ -8,21 +7,6 @@ from models import Photo
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 
 # TODO: rewrite this module, define rules of database filling up
-logging.basicConfig(
-    format=u'%(name)-12s: %(filename)s[LINE:%(lineno)d]# %(levelname)-8s [%(asctime)s]  %(message)s',
-    level=logging.INFO,
-    filename='database.log', filemode='w'
-)
-logger_db = logging.getLogger(__name__)
-
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-# set a format which is simpler for console use
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-# tell the handler to use this format
-console.setFormatter(formatter)
-# add the handler to the root logger
-logging.getLogger().addHandler(console)
 
 INNER_PHOTOS_TABLE_NAME = "inner_photos"
 OUTER_PHOTOS_TABLE_NAME = "outer_photos"

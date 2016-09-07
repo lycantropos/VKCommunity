@@ -1,13 +1,13 @@
-import logging.config
 import os
 
 import requests
-from vk_app import App, download_vk_objects
+from vk_app import App, LoggingConfig, download_vk_objects
 from vk_app.utils import check_dir
 
 from models import Photo
 from services.database import get_random_unposted_photos
-from settings import GROUP_ID, DST_PATH, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE, LOGS_PATH, LOGGING_CONFIG_PATH
+from settings import (GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
+                      DST_PATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
 from utils import check_photos_year_month_dates_dir
 
 
@@ -16,6 +16,8 @@ class CommunityApp(App):
                  api_version='5.53'):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
+        self.logging_config = LoggingConfig(BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
+        self.logging_config.set()
 
     def load_community_wall_photos(self, params: dict):
         if 'owner_id' not in params:
@@ -138,25 +140,6 @@ class CommunityApp(App):
         response = self.api_session.photos.getWallUploadServer(**values)
         upload_server_url = response['upload_url']
         return upload_server_url
-
-
-class LoggingConfig:
-    def __init__(self, base_dir):
-        self.base_dir = base_dir
-
-    def set(self):
-        self.check_logs_dir()
-        self.set_log_config_file_path()
-
-    def check_logs_dir(self):
-        logs_dir = os.path.dirname(LOGS_PATH)
-        abs_logs_dir = os.path.join(self.base_dir, logs_dir)
-        if not os.path.exists(abs_logs_dir):
-            os.makedirs(abs_logs_dir)
-
-    def set_log_config_file_path(self):
-        log_config_full_path = os.path.join(self.base_dir, LOGGING_CONFIG_PATH)
-        logging.config.fileConfig(log_config_full_path, defaults={'logfilename': LOGS_PATH})
 
 
 if __name__ == '__main__':

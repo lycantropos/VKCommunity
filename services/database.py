@@ -1,9 +1,10 @@
+import logging
 import shutil
 
 import MySQLdb as Mdb
-from vk_app.utils import find_file, DATE_FORMAT
+from vk_app.utils import find_file
 
-from models import Photo
+from models import Photo, Base, engine
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 
 # TODO: rewrite this module, define rules of database filling up
@@ -74,7 +75,7 @@ def read_table(table_name=INNER_PHOTOS_TABLE_NAME, limit=100):
         rows = cur.fetchall()
 
         for row in rows:
-            logger_db.info(row)
+            logging.info(row)
 
 
 def check_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
@@ -89,7 +90,7 @@ def check_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
         res = cur.fetchall()
 
         for duplicate in res:
-            logger_db.info(duplicate)
+            logging.info(duplicate)
         return res
 
 
@@ -126,10 +127,7 @@ def get_random_unposted_photos(num=1):
         raw_photos_list = cur.fetchall()
 
         photos = list(
-            Photo(
-                raw_photo[1], raw_photo[2], raw_photo[3], raw_photo[4],
-                raw_photo[5], raw_photo[6], raw_photo[7].strftime(DATE_FORMAT)
-            )
+            Photo(raw_photo[1], raw_photo[2], raw_photo[3], raw_photo[4], raw_photo[6], raw_photo[5], raw_photo[7])
             for raw_photo in raw_photos_list
         )
         return photos
@@ -170,3 +168,7 @@ def synchronize_photos_with_photos_table(photos: list, save_path: str, is_inner_
                 req = photos_table_insert_request.format(**photo.__dict__)
 
             cur.execute(req)
+
+
+if __name__ == '__main__':
+    Base.metadata.create_all(engine)

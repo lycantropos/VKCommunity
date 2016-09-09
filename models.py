@@ -1,12 +1,33 @@
 import os
+from datetime import datetime
 
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy.ext.declarative import declarative_base
 from vk_app import VKObject
-from vk_app.utils import get_date_from_millis, get_year_month_date, get_valid_folders, download
+from vk_app.utils import get_year_month_date, get_valid_folders, download
+
+from settings import DATABASE_URI
+
+engine = create_engine(DATABASE_URI)
+connection = engine.connect()
+Base = declarative_base()
 
 
 class Photo(VKObject):
-    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str,
-                 link: str, text: str, post_date: str):
+    __tablename__ = 'photos'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    vk_id = Column(Integer, primary_key=True, autoincrement=False)
+    owner_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
+
+    album = Column(String(255), nullable=False)
+    text = Column(String(255), nullable=True)
+    link = Column(String(255), primary_key=True)
+
+    post_date = Column(DateTime, nullable=False)
+
+    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, text: str, link: str,
+                 post_date: datetime, is_posted=False):
         self.vk_id = vk_id
         self.owner_id = owner_id
         self.user_id = user_id
@@ -14,6 +35,12 @@ class Photo(VKObject):
         self.link = link
         self.text = text
         self.post_date = post_date
+        self.is_posted = is_posted
+
+    def __repr__(self):
+        return "<Photo(album='{}', link='{}', post_date='{}')>".format(
+            self.album, self.link, self.post_date
+        )
 
     def __str__(self):
         return "Photo from '{}' album".format(self.album)
@@ -48,13 +75,9 @@ class Photo(VKObject):
 
     @classmethod
     def from_raw(cls, raw_photo: dict):
-        return Photo(
-            int(raw_photo['id']), int(raw_photo['owner_id']),
-            int(raw_photo.pop('user_id', 0)), raw_photo['album'],
-            Photo.get_link_to_highest_resolution(raw_photo),
-            raw_photo['text'],
-            get_date_from_millis(raw_photo['date'])
-        )
+        return Photo(int(raw_photo['id']), int(raw_photo['owner_id']), int(raw_photo.pop('user_id', 0)),
+                     raw_photo['album'], raw_photo['text'], Photo.get_link_to_highest_resolution(raw_photo),
+                     datetime.fromtimestamp(raw_photo['date']))
 
     @staticmethod
     def get_link_to_highest_resolution(raw_photo: dict) -> str:

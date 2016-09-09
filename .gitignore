@@ -2,6 +2,6 @@
 .idea/
 .cache/
 *__pycache__/
-*.log
+*.log*
 logs
 configuration.conf

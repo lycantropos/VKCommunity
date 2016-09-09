@@ -1,3 +1,4 @@
+import logging
 import os
 
 import PIL.Image
@@ -67,5 +68,5 @@ def mark_photos(photo_path: str, watermark_path: str):
                 photo = PIL.Image.open(photo_path)
                 photo = photo.convert('RGBA')
                 save_path = photo_path.replace('.jpg', '.png')
-                logger_watermark.info(save_path)
+                logging.info(save_path)
                 paste_watermark(photo, watermark=watermark, save_path=save_path)

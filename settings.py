@@ -1,5 +1,6 @@
 import configparser
 import os
+from urllib.parse import quote_plus
 
 CONFIGURATION_FILE_NAME = 'configuration.conf'
 CURRENT_FILE_PATH = os.path.realpath(__file__)
@@ -28,6 +29,7 @@ DB_HOST = database.get('db_host')
 DB_USER_NAME = database.get('db_user_name')
 DB_USER_PASSWORD = database.get('db_user_password')
 DB_NAME = database.get('db_name')
+DATABASE_URI = 'mysql+mysqldb://{}:{}@{}/{}'.format(DB_USER_NAME, quote_plus(DB_USER_PASSWORD), DB_HOST, DB_NAME)
 
 logger = config['logger']
 LOGS_PATH = logger.get('logs_path')

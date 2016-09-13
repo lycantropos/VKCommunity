@@ -1,6 +1,9 @@
 import configparser
+import json
 import os
 from urllib.parse import quote_plus
+
+from sqlalchemy.engine import url
 
 CONFIGURATION_FILE_NAME = 'configuration.conf'
 CURRENT_FILE_PATH = os.path.realpath(__file__)
@@ -19,6 +22,7 @@ app = config['app']
 APP_ID = app.get('app_id')
 SCOPE = app.get('scope')
 GROUP_ID = app.get('group_id')
+RESTRICTED_ALBUMS = json.loads(app.get('restricted_albums'))
 
 files = config['files']
 DST_PATH = files.get('dst_path')
@@ -29,7 +33,16 @@ DB_HOST = database.get('db_host')
 DB_USER_NAME = database.get('db_user_name')
 DB_USER_PASSWORD = database.get('db_user_password')
 DB_NAME = database.get('db_name')
-DATABASE_URI = 'mysql+mysqldb://{}:{}@{}/{}'.format(DB_USER_NAME, quote_plus(DB_USER_PASSWORD), DB_HOST, DB_NAME)
+
+DATABASE_URL = url.URL(
+    drivername='mysql',
+    host=DB_HOST,
+    port=3306,
+    username=DB_USER_NAME,
+    password=DB_USER_PASSWORD,
+    database=DB_NAME,
+    query={'charset': 'utf8mb4'}
+)
 
 logger = config['logger']
 LOGS_PATH = logger.get('logs_path')

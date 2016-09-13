@@ -48,6 +48,7 @@ git clone https://github.com/lycantropos/VKCommunity.git
 ```
 
 **Important**
+
 In the following instructions it is assumed that commands are executed from `vk-community/` directory.
 
 #### Setting up the configuration files

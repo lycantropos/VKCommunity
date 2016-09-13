@@ -4,29 +4,32 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from vk_app import VKObject
-from vk_app.utils import get_year_month_date, get_valid_folders, download
+from vk_app.utils import get_year_month_date, get_valid_dirs, download, check_dir
 
-from settings import DATABASE_URI
+from settings import DATABASE_URL
 
-engine = create_engine(DATABASE_URI)
+engine = create_engine(DATABASE_URL, echo=True)
 connection = engine.connect()
 Base = declarative_base()
 
 
-class Photo(VKObject):
+class Photo(Base, VKObject):
     __tablename__ = 'photos'
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    __table_args__ = {
+        'mysql_charset': 'utf8'
+    }
+
     vk_id = Column(Integer, primary_key=True, autoincrement=False)
     owner_id = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=False)
 
     album = Column(String(255), nullable=False)
-    text = Column(String(255), nullable=True)
+    comment = Column(String(255), nullable=True)
+
+    date_time = Column(DateTime, nullable=False)
     link = Column(String(255), primary_key=True)
 
-    post_date = Column(DateTime, nullable=False)
-
-    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, text: str, post_date: datetime, link: str):
+    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, comment: str, date_time: datetime, link: str):
         # VK utility fields
         self.vk_id = vk_id
         self.owner_id = owner_id
@@ -34,15 +37,15 @@ class Photo(VKObject):
 
         # info fields
         self.album = album
-        self.text = text
+        self.comment = comment
 
         # technical info fields
-        self.post_date = post_date
+        self.date_time = date_time
         self.link = link
 
     def __repr__(self):
-        return "<Photo(album='{}', link='{}', post_date='{}')>".format(
-            self.album, self.link, self.post_date
+        return "<Photo(album='{}', link='{}', date_time='{}')>".format(
+            self.album, self.link, self.date_time
         )
 
     def __str__(self):
@@ -58,44 +61,46 @@ class Photo(VKObject):
             owner_id=self.owner_id,
             user_id=self.user_id,
             album=self.album,
-            text=self.text,
-            post_date=self.post_date,
+            comment=self.comment,
+            date_time=self.date_time,
             link=self.link
         )
 
     @classmethod
     def info_fields(cls):
         return [
-            'artist',
-            'title',
-            'genre_id',
-            'lyrics_id'
+            'album',
+            'comment'
         ]
 
-    def download(self, save_path: str):
-        photo_link = self.link
-        image_path = self.get_image_path(save_path)
+    def download(self, path: str):
+        image_subdirs = self.get_file_subdirs()
+        check_dir(path, *image_subdirs)
 
-        download(photo_link, image_path)
+        image_dir = os.path.join(path, *image_subdirs)
+        image_name = self.get_file_name()
+        image_path = os.path.join(image_dir, image_name)
 
-    def get_image_path(self, save_path: str) -> str:
-        photo_album_title = self.album
-        photo_date = self.post_date
-        image_name = self.get_image_name()
-        year_month_date = get_year_month_date(photo_date)
-        image_subfolders = get_valid_folders(photo_album_title, year_month_date, image_name)
-        image_path = os.path.join(save_path, *image_subfolders)
-        return image_path
+        download(self.link, image_path)
 
-    def get_image_name(self) -> str:
-        photo_url = self.link
-        image_name = photo_url.split('/')[-1]
+    def get_file_subdirs(self) -> list:
+        year_month_date = get_year_month_date(self.date_time)
+        image_subdirs = get_valid_dirs(self.album, year_month_date)
+        return image_subdirs
+
+    def get_file_name(self) -> str:
+        image_name = self.link.split('/')[-1]
         return image_name
 
-    def get_image_content(self, images_path: str, is_image_marked=True) -> bytearray:
-        image_path = self.get_image_path(images_path)
+    def get_image_content(self, path: str, is_image_marked=True) -> bytearray:
+        image_subdirs = self.get_file_subdirs()
+        image_dir = os.path.join(path, *image_subdirs)
+
+        image_name = self.get_file_name()
         if is_image_marked:
-            image_path = image_path.replace('.jpg', '.png')
+            image_name = image_name.replace('.jpg', '.png')
+
+        image_path = os.path.join(image_dir, image_name)
         with open(image_path, 'rb') as marked_image:
             image_content = marked_image.read()
             return image_content
@@ -105,21 +110,21 @@ class Photo(VKObject):
         return Photo(
             int(raw_photo['id']), int(raw_photo['owner_id']), int(raw_photo.pop('user_id', 0)),
             raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
-            Photo.get_link_to_highest_resolution(raw_photo)
+            Photo.get_link(raw_photo)
         )
 
     @staticmethod
-    def get_link_to_highest_resolution(raw_photo: dict) -> str:
-        raw_photo_link_key_prefix = 'photo_'
+    def get_link(raw_photo: dict) -> str:
+        photo_link_key_prefix = 'photo_'
 
-        raw_photo_link_keys = list(
+        photo_link_keys = list(
             raw_photo_key
             for raw_photo_key in raw_photo
-            if raw_photo_link_key_prefix in raw_photo_key
+            if photo_link_key_prefix in raw_photo_key
         )
-        raw_photo_link_keys.sort(key=lambda x: int(x.replace(raw_photo_link_key_prefix, '')))
+        photo_link_keys.sort(key=lambda x: int(x.replace(photo_link_key_prefix, '')))
 
-        highest_resolution_raw_photo_link_key = raw_photo_link_keys[-1]
-        highest_resolution_raw_photo_link = raw_photo[highest_resolution_raw_photo_link_key]
+        highest_res_link_key = photo_link_keys[-1]
+        highest_res_link = raw_photo[highest_res_link_key]
 
-        return highest_resolution_raw_photo_link
+        return highest_res_link

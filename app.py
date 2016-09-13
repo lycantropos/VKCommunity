@@ -2,7 +2,7 @@ import os
 
 import requests
 from vk_app import App, LoggingConfig, download_vk_objects
-from vk_app.utils import check_dir
+from vk_app.utils import check_dir, get_raw_vk_objects_from_posts
 
 from models import Photo
 from services.database import get_random_unposted_photos
@@ -37,7 +37,7 @@ class CommunityApp(App):
         check_dir(album_path)
 
         community_wall_posts = self.get_items('wall.get', params)
-        raw_photos = Photo.get_raw_from_posts(community_wall_posts)
+        raw_photos = get_raw_vk_objects_from_posts(Photo, community_wall_posts)
 
         for raw_photo in raw_photos:
             raw_photo['album'] = album_title

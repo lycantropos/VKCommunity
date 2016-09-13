@@ -26,16 +26,19 @@ class Photo(VKObject):
 
     post_date = Column(DateTime, nullable=False)
 
-    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, text: str, link: str,
-                 post_date: datetime, is_posted=False):
+    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, text: str, post_date: datetime, link: str):
+        # VK utility fields
         self.vk_id = vk_id
         self.owner_id = owner_id
         self.user_id = user_id
+
+        # info fields
         self.album = album
-        self.link = link
         self.text = text
+
+        # technical info fields
         self.post_date = post_date
-        self.is_posted = is_posted
+        self.link = link
 
     def __repr__(self):
         return "<Photo(album='{}', link='{}', post_date='{}')>".format(
@@ -44,6 +47,30 @@ class Photo(VKObject):
 
     def __str__(self):
         return "Photo from '{}' album".format(self.album)
+
+    @classmethod
+    def name(cls):
+        return 'photo'
+
+    def as_dict(self) -> dict:
+        return dict(
+            vk_id=self.vk_id,
+            owner_id=self.owner_id,
+            user_id=self.user_id,
+            album=self.album,
+            text=self.text,
+            post_date=self.post_date,
+            link=self.link
+        )
+
+    @classmethod
+    def info_fields(cls):
+        return [
+            'artist',
+            'title',
+            'genre_id',
+            'lyrics_id'
+        ]
 
     def download(self, save_path: str):
         photo_link = self.link
@@ -75,9 +102,11 @@ class Photo(VKObject):
 
     @classmethod
     def from_raw(cls, raw_photo: dict):
-        return Photo(int(raw_photo['id']), int(raw_photo['owner_id']), int(raw_photo.pop('user_id', 0)),
-                     raw_photo['album'], raw_photo['text'], Photo.get_link_to_highest_resolution(raw_photo),
-                     datetime.fromtimestamp(raw_photo['date']))
+        return Photo(
+            int(raw_photo['id']), int(raw_photo['owner_id']), int(raw_photo.pop('user_id', 0)),
+            raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
+            Photo.get_link_to_highest_resolution(raw_photo)
+        )
 
     @staticmethod
     def get_link_to_highest_resolution(raw_photo: dict) -> str:

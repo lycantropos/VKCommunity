@@ -4,7 +4,7 @@ import shutil
 import MySQLdb as Mdb
 from vk_app.utils import find_file
 
-from models import Photo, Base, engine
+from models import Base, engine
 from settings import DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME
 
 # TODO: rewrite this module, define rules of database filling up
@@ -113,24 +113,6 @@ def remove_duplicates(table_name=INNER_PHOTOS_TABLE_NAME):
 
 
 RESTRICTED_ALBUMS = ['ябынестал', 'ммм', 'momspaghetti', 'разное']
-
-
-def get_random_unposted_photos(num=1):
-    con = Mdb.connect(DB_HOST, DB_USER_NAME, DB_USER_PASSWORD, DB_NAME, use_unicode=True, charset="utf8")
-    with con:
-        cur = con.cursor()
-        cond = """ AND album != '""" + """' AND album != '""".join(RESTRICTED_ALBUMS) + """' """
-        req = """SELECT * FROM {} WHERE is_posted = 0""".format(
-            INNER_PHOTOS_TABLE_NAME
-        ) + cond + """ ORDER BY RAND() LIMIT {}""".format(num)
-        cur.execute(req)
-        raw_photos_list = cur.fetchall()
-
-        photos = list(
-            Photo(raw_photo[1], raw_photo[2], raw_photo[3], raw_photo[4], raw_photo[6], raw_photo[5], raw_photo[7])
-            for raw_photo in raw_photos_list
-        )
-        return photos
 
 
 def set_posted(key, value):

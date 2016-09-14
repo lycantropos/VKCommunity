@@ -25,8 +25,7 @@ GROUP_ID = app.get('group_id')
 RESTRICTED_ALBUMS = json.loads(app.get('restricted_albums'))
 
 files = config['files']
-DST_PATH = files.get('dst_path')
-SRC_PATH = files.get('src_path')
+ABSPATH = files.get('abspath')
 
 database = config['database']
 DB_HOST = database.get('db_host')

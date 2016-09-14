@@ -27,7 +27,7 @@ class Photo(Base, VKObject):
     comment = Column(String(255), nullable=True)
 
     date_time = Column(DateTime, nullable=False)
-    link = Column(String(255), primary_key=True)
+    link = Column(String(255), unique=True)
 
     def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, comment: str, date_time: datetime, link: str):
         # VK utility fields

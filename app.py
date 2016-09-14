@@ -6,7 +6,7 @@ from vk_app.utils import get_raw_vk_objects_from_posts
 
 from models import Photo
 from settings import (GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
-                      DST_PATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
+                      ABSPATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
 
 
 class CommunityApp(App):
@@ -55,9 +55,9 @@ class CommunityApp(App):
         return community_info
 
     @staticmethod
-    def get_images_path(community_info: dict, base_dir=DST_PATH):
+    def get_images_path(community_info: dict, path=ABSPATH):
         community_screen_name = community_info['screen_name']
-        images_path = os.path.join(base_dir, community_screen_name)
+        images_path = os.path.join(path, community_screen_name)
         return images_path
 
     def post_random_photos_on_wall(self, params: dict, num=1):

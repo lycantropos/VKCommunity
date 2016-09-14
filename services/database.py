@@ -27,7 +27,7 @@ def save_in_db(audios: list):
                            audios_dicts)
 
 
-def load_audios_from_db(session, filters: dict):
+def load_photos_from_db(session, filters: dict):
     q = session.query(Photo)
 
     owner_id = filters.get('owner_id', None)
@@ -49,3 +49,5 @@ def load_audios_from_db(session, filters: dict):
 
     photos = q.all()
     return photos
+
+

@@ -1,7 +1,9 @@
+import logging
+
 from vk_app.utils import check_dir
 
 from app import CommunityApp
-from services.database import save_in_db
+from services.database import save_in_db, load_photos_from_db, Session
 from settings import GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
 
 if __name__ == '__main__':
@@ -17,5 +19,11 @@ if __name__ == '__main__':
     )
     community_info = community_app.get_community_info(values)
 
-    save_path = CommunityApp.get_images_path(community_info)
-    check_dir(save_path)
+    path = CommunityApp.get_images_path(community_info)
+    check_dir(path)
+    session = Session()
+    filters = dict()
+    photos = load_photos_from_db(session, filters)
+    for photo in photos:
+        logging.info(photo)
+        photo.synchronize(path)

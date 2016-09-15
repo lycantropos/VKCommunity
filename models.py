@@ -1,15 +1,12 @@
 import os
 from datetime import datetime
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from vk_app import VKObject
-from vk_app.utils import get_year_month_date, get_valid_dirs, download, check_dir
+from vk_app.models import VKObject
+from vk_app.services.loading import download
+from vk_app.utils import get_year_month_date, get_valid_dirs, check_dir
 
-from settings import DATABASE_URL
-
-engine = create_engine(DATABASE_URL, echo=True)
-connection = engine.connect()
 Base = declarative_base()
 
 

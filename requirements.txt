@@ -1,6 +1,5 @@
 sqlalchemy
 requests
-mysqlclient
 numpy
 scikit-image
 Pillow

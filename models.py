@@ -14,7 +14,7 @@ Base = declarative_base()
 
 
 class Photo(Base, VKObject):
-    __tablename__ = 'photos'
+    __tablename__ = 'photo'
     __table_args__ = {
         'mysql_charset': 'utf8'
     }
@@ -29,7 +29,8 @@ class Photo(Base, VKObject):
     date_time = Column(DateTime, nullable=False)
     link = Column(String(255), unique=True)
 
-    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, comment: str, date_time: datetime, link: str):
+    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, comment: str, date_time: datetime,
+                 link: str):
         # VK utility fields
         self.vk_id = vk_id
         self.owner_id = owner_id
@@ -54,17 +55,6 @@ class Photo(Base, VKObject):
     @classmethod
     def name(cls):
         return 'photo'
-
-    def as_dict(self) -> dict:
-        return dict(
-            vk_id=self.vk_id,
-            owner_id=self.owner_id,
-            user_id=self.user_id,
-            album=self.album,
-            comment=self.comment,
-            date_time=self.date_time,
-            link=self.link
-        )
 
     @classmethod
     def info_fields(cls):

@@ -2,7 +2,7 @@ import os
 
 import requests
 from vk_app import App, LoggingConfig
-from vk_app.utils import get_raw_vk_objects_from_posts
+from vk_app.services.vk_objects import get_vk_objects_from_raw, get_raw_vk_objects_from_posts
 
 from models import Photo
 from settings import (GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
@@ -29,7 +29,7 @@ class CommunityApp(App):
         for raw_photo in raw_photos:
             raw_photo['album'] = album_title
 
-        photos = Photo.get_vk_objects_from_raw(raw_photos)
+        photos = get_vk_objects_from_raw(Photo, raw_photos)
         return photos
 
     def load_community_albums_photos(self, params: dict) -> list:
@@ -45,7 +45,7 @@ class CommunityApp(App):
             raw_photos = self.get_items('photos.get', params)
             for raw_photo in raw_photos:
                 raw_photo['album'] = album_title
-            album_photos = Photo.get_vk_objects_from_raw(raw_photos)
+            album_photos = get_vk_objects_from_raw(Photo, raw_photos)
             photos += album_photos
 
         return photos

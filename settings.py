@@ -30,7 +30,7 @@ DST_ABSPATH = files.get('dst_abspath')
 database = config['database']
 DB_HOST = database.get('db_host')
 DB_USER_NAME = database.get('db_user_name')
-DB_USER_PASSWORD = database.get('db_user_password')
+DB_USER_PASSWORD = quote_plus(database.get('db_user_password'))
 DB_NAME = database.get('db_name')
 
 DATABASE_URL = url.URL(

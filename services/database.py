@@ -25,10 +25,15 @@ def load_photos_from_db(session: Session, filters: dict):
             Photo.owner_id == owner_id
         )
 
-    album = filters.get('album', None)
-    if owner_id:
+    albums = filters.get('albums', None)
+    if albums:
         q = q.filter(
-            Photo.album == album
+            Photo.album.in_(albums)
+        )
+    restricted_albums = filters.get('restricted_albums', None)
+    if restricted_albums:
+        q = q.filter(
+            Photo.album.notin_(restricted_albums)
         )
 
     start_time = filters.get('start_time', None)
@@ -41,6 +46,11 @@ def load_photos_from_db(session: Session, filters: dict):
         q = q.filter(
             Photo.date_time <= end_time
         )
+
+    posted = filters.get('posted', False)
+    q = q.filter(
+        Photo.posted.is_(posted)
+    )
 
     random = filters.get('random', None)
     if random:

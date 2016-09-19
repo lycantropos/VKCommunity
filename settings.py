@@ -17,12 +17,14 @@ config.read(CONFIGURATION_FILE_PATH)
 user = config['user']
 USER_LOGIN = user.get('user_login')
 USER_PASSWORD = user.get('user_password')
+ACCESS_TOKEN = user.get('access_token')
 
 app = config['app']
-APP_ID = app.get('app_id')
+APP_ID = int(app.get('app_id'))
 SCOPE = app.get('scope')
-GROUP_ID = app.get('group_id')
-RESTRICTED_ALBUMS = json.loads(app.get('restricted_albums'))
+SRC_GROUP_ID = int(app.get('src_group_id'))
+DST_GROUP_ID = int(app.get('dst_group_id'))
+RESTRICTED_ALBUMS = app.get('restricted_albums').split(',')
 
 files = config['files']
 DST_ABSPATH = files.get('dst_abspath')

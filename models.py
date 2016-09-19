@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from vk_app.models import VKObject
 from vk_app.services.loading import download
@@ -26,6 +26,8 @@ class Photo(Base, VKObject):
 
     date_time = Column(DateTime, nullable=False)
     link = Column(String(255), nullable=True)
+
+    posted = Column(Boolean, default=False)
 
     def __init__(self, owner_id: int, photo_id: int, user_id: int, album: str, comment: str, date_time: datetime,
                  link: str):
@@ -52,15 +54,8 @@ class Photo(Base, VKObject):
         return "Photo from '{}' album".format(self.album)
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
         return 'photo'
-
-    @classmethod
-    def info_fields(cls):
-        return [
-            'album',
-            'comment'
-        ]
 
     def download(self, path: str):
         image_subdirs = self.get_file_subdirs()
@@ -82,20 +77,17 @@ class Photo(Base, VKObject):
         return image_name
 
     def get_image_content(self, path: str, is_image_marked=True) -> bytearray:
-        image_subdirs = self.get_file_subdirs()
-        image_dir = os.path.join(path, *image_subdirs)
-
-        image_name = self.get_file_name()
+        image_path = self.get_file_path(path)
         if is_image_marked:
-            image_name = image_name.replace('.jpg', '.png')
+            image_path = image_path.replace('.jpg', '.png')
 
-        image_path = os.path.join(image_dir, image_name)
         with open(image_path, 'rb') as marked_image:
             image_content = marked_image.read()
-            return image_content
+
+        return image_content
 
     @classmethod
-    def from_raw(cls, raw_photo: dict):
+    def from_raw(cls, raw_photo: dict) -> type:
         return Photo(int(raw_photo['owner_id']), int(raw_photo['id']), int(raw_photo.pop('user_id', 0)),
                      raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
                      Photo.get_link(raw_photo))

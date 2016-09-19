@@ -1,13 +1,22 @@
+import logging
 import os
+from typing import List
 
 import requests
+from sqlalchemy.orm import sessionmaker
 from vk_app import App
 from vk_app.services.logging_config import LoggingConfig
 from vk_app.services.vk_objects import get_vk_objects_from_raw, get_raw_vk_objects_from_posts
+from vk_app.utils import check_dir
 
 from models import Photo
-from settings import (GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
+from services.database import engine, save_in_db, load_photos_from_db
+from settings import (SRC_GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
                       DST_ABSPATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
+
+MAX_ATTACHMENTS_LIMIT = 10
+MAX_POSTS_PER_DAY = 50
+POSTING_PERIOD_IN_SEC = 86400 / MAX_POSTS_PER_DAY
 
 
 class CommunityApp(App):
@@ -15,12 +24,32 @@ class CommunityApp(App):
                  api_version='5.53'):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
+        self.db_session = sessionmaker(bind=engine)()
         self.logging_config = LoggingConfig(BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
         self.logging_config.set()
 
+    def synchronize(self):
+        group_id = self.group_id
+        values = dict(
+            group_id=group_id,
+            fields='screen_name'
+        )
+        community_info = self.get_community_info(values)
+        path = CommunityApp.get_images_path(community_info)
+        check_dir(path)
+        params = dict()
+        photos = self.load_community_albums_photos(params)
+        save_in_db(self.db_session, photos)
+
+        filters = dict()
+        photos = load_photos_from_db(self.db_session, filters)
+        for photo in photos:
+            logging.info(photo)
+            photo.synchronize(path)
+
     def load_community_wall_photos(self, params: dict) -> list:
         if 'owner_id' not in params:
-            params['owner_id'] = '-' + self.group_id
+            params['owner_id'] = '-{}'.format(self.group_id)
 
         album_title = 'wall'
 
@@ -35,7 +64,7 @@ class CommunityApp(App):
 
     def load_community_albums_photos(self, params: dict) -> list:
         if 'owner_id' not in params:
-            params['owner_id'] = '-' + self.group_id
+            params['owner_id'] = '-{}'.format(self.group_id)
 
         albums = self.get_items('photos.getAlbums', params)
 
@@ -61,21 +90,25 @@ class CommunityApp(App):
         images_path = os.path.join(path, community_screen_name)
         return images_path
 
-    def post_random_photos_on_wall(self, params: dict, num=1):
-        if 'group_id' not in params:
-            params['group_id'] = self.group_id
-
-        group_id = params['group_id']
+    def post_photos_on_wall(self, photos: List[Photo], group_id: int):
+        if not group_id:
+            group_id = self.group_id
 
         values = dict(group_id=group_id)
         upload_server_url = self.get_upload_server_url(values)
 
         values = dict(
-            group_id=group_id,
+            group_id=self.group_id,
             fields='screen_name'
         )
         community_info = self.get_community_info(values)
         load_path = CommunityApp.get_images_path(community_info)
+
+        if len(photos) > MAX_ATTACHMENTS_LIMIT:
+            logging.warning(
+                "Too many photos to post: {}, max available: {}".format(len(photos), MAX_ATTACHMENTS_LIMIT)
+            )
+            photos = photos[:MAX_ATTACHMENTS_LIMIT]
 
         marked_images_contents = list(
             photo.get_image_content(load_path, is_image_marked=True)
@@ -89,20 +122,23 @@ class CommunityApp(App):
 
         session = requests.Session()
         response = session.post(upload_server_url, files=photos_files)
+        response = response.json()
 
-        values.update(response.json())
+        values = dict(group_id=group_id)
+        values.update(response)
 
         response = self.api_session.photos.saveWallPhoto(**values)
 
         for ind, raw_photo in enumerate(response):
             photo = photos[ind]
-            message = photo.comment + """
-            #pic@hoboshelter
-            #""" + photo.album.replace(' ', '_') + "@hoboshelter"
-            values = dict(access_token=self.access_token, owner_id=raw_photo['owner_id'],
+            tags = ['pic', photo.album]
+            message = photo.comment + ' '.join("#{}@{}".format(tag, community_info['screen_name']) for tag in tags)
+            values = dict(access_token=self.access_token, owner_id='-{}'.format(group_id),
                           attachments='photo{}_{}'.format(raw_photo['owner_id'], raw_photo['id']),
                           message=message)
             self.api_session.wall.post(**values)
+            self.db_session.query(Photo).filter_by(vk_id=photo.vk_id).update({'posted': True})
+            self.db_session.commit()
 
     def get_upload_server_url(self, values):
         response = self.api_session.photos.getWallUploadServer(**values)
@@ -111,5 +147,5 @@ class CommunityApp(App):
 
 
 if __name__ == '__main__':
-    community_app = CommunityApp(APP_ID, GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
+    community_app = CommunityApp(APP_ID, SRC_GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
     community_app.load_community_albums_photos(dict())

@@ -1,34 +1,21 @@
-import logging
-
-from sqlalchemy.orm import sessionmaker
-from vk_app.utils import check_dir
-
 from app import CommunityApp
-from services.database import save_in_db, load_photos_from_db, engine
-from settings import GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
+from services.database import load_photos_from_db
+from services.images import mark_photos
+from settings import SRC_GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE, RESTRICTED_ALBUMS, DST_GROUP_ID, \
+    DST_ABSPATH, WATERMARK_PATH
 
 if __name__ == '__main__':
-    community_app = CommunityApp(APP_ID, GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
-    group_id = community_app.group_id
-    values = dict(
-        group_id=group_id,
-        fields='screen_name'
-    )
-    community_info = community_app.get_community_info(values)
-
-    path = CommunityApp.get_images_path(community_info)
-    check_dir(path)
-    params = dict()
-    photos = community_app.load_community_albums_photos(params)
-
-    session = sessionmaker(bind=engine)()
+    community_app = CommunityApp(APP_ID, SRC_GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
+    community_app.synchronize()
+    mark_photos(DST_ABSPATH, WATERMARK_PATH)
     try:
-        save_in_db(session, photos)
-
-        filters = dict()
-        photos = load_photos_from_db(session, filters)
-        for photo in photos:
-            logging.info(photo)
-            photo.synchronize(path)
+        filters = dict(
+            owner_id='-{}'.format(SRC_GROUP_ID),
+            restricted_albums=RESTRICTED_ALBUMS,
+            random=True,
+            limit=1
+        )
+        random_photos = load_photos_from_db(community_app.db_session, filters)
+        community_app.post_photos_on_wall(random_photos, group_id=DST_GROUP_ID)
     finally:
-        session.close()
+        community_app.db_session.close()

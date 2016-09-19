@@ -59,14 +59,14 @@ def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image, save_pat
     PIL.Image.fromarray(marked_image, mode='RGBA').save(save_path)
 
 
-def mark_photos(photo_path: str, watermark_path: str):
+def mark_photos(path: str, watermark_path: str):
     watermark = PIL.Image.open(watermark_path)
-    for folder, _, files in os.walk(photo_path):
+    for folder, _, files in os.walk(path):
         for file_path in files:
             if file_path.endswith('.jpg'):
-                photo_path = os.path.join(folder, file_path)
-                photo = PIL.Image.open(photo_path)
+                path = os.path.join(folder, file_path)
+                photo = PIL.Image.open(path)
                 photo = photo.convert('RGBA')
-                save_path = photo_path.replace('.jpg', '.png')
+                save_path = path.replace('.jpg', '.png')
                 logging.info(save_path)
                 paste_watermark(photo, watermark=watermark, save_path=save_path)

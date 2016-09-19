@@ -1,9 +1,10 @@
 import logging
 
+from sqlalchemy.orm import sessionmaker
 from vk_app.utils import check_dir
 
 from app import CommunityApp
-from services.database import save_in_db, load_photos_from_db, Session
+from services.database import save_in_db, load_photos_from_db, engine
 from settings import GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE
 
 if __name__ == '__main__':
@@ -17,14 +18,17 @@ if __name__ == '__main__':
 
     path = CommunityApp.get_images_path(community_info)
     check_dir(path)
-
     params = dict()
     photos = community_app.load_community_albums_photos(params)
-    save_in_db(photos)
 
-    session = Session()
-    filters = dict()
-    photos = load_photos_from_db(session, filters)
-    for photo in photos:
-        logging.info(photo)
-        photo.synchronize(path)
+    session = sessionmaker(bind=engine)()
+    try:
+        save_in_db(session, photos)
+
+        filters = dict()
+        photos = load_photos_from_db(session, filters)
+        for photo in photos:
+            logging.info(photo)
+            photo.synchronize(path)
+    finally:
+        session.close()

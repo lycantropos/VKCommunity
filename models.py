@@ -16,21 +16,23 @@ class Photo(Base, VKObject):
         'mysql_charset': 'utf8'
     }
 
-    vk_id = Column(Integer, primary_key=True, autoincrement=False)
+    vk_id = Column(String(255), primary_key=True)
     owner_id = Column(Integer, nullable=False)
+    photo_id = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=False)
 
     album = Column(String(255), nullable=False)
     comment = Column(String(255), nullable=True)
 
     date_time = Column(DateTime, nullable=False)
-    link = Column(String(255), unique=True)
+    link = Column(String(255), nullable=True)
 
-    def __init__(self, vk_id: int, owner_id: int, user_id: int, album: str, comment: str, date_time: datetime,
+    def __init__(self, owner_id: int, photo_id: int, user_id: int, album: str, comment: str, date_time: datetime,
                  link: str):
         # VK utility fields
-        self.vk_id = vk_id
+        self.vk_id = '{}_{}'.format(owner_id, photo_id)
         self.owner_id = owner_id
+        self.photo_id = photo_id
         self.user_id = user_id
 
         # info fields
@@ -94,11 +96,9 @@ class Photo(Base, VKObject):
 
     @classmethod
     def from_raw(cls, raw_photo: dict):
-        return Photo(
-            int(raw_photo['id']), int(raw_photo['owner_id']), int(raw_photo.pop('user_id', 0)),
-            raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
-            Photo.get_link(raw_photo)
-        )
+        return Photo(int(raw_photo['owner_id']), int(raw_photo['id']), int(raw_photo.pop('user_id', 0)),
+                     raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
+                     Photo.get_link(raw_photo))
 
     @staticmethod
     def get_link(raw_photo: dict) -> str:

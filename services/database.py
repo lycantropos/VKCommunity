@@ -16,7 +16,7 @@ def save_in_db(session: Session, photos: List[Photo]):
     session.commit()
 
 
-def load_photos_from_db(session: Session, filters: dict):
+def load_photos_from_db(session: Session, filters: dict) -> List[Photo]:
     q = session.query(Photo)
 
     owner_id = filters.get('owner_id', None)

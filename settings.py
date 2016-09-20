@@ -1,5 +1,4 @@
 import configparser
-import json
 import os
 from urllib.parse import quote_plus
 
@@ -28,6 +27,7 @@ RESTRICTED_ALBUMS = app.get('restricted_albums').split(',')
 
 files = config['files']
 DST_ABSPATH = files.get('dst_abspath')
+SRC_ABSPATH = files.get('src_abspath')
 
 database = config['database']
 DB_HOST = database.get('db_host')
@@ -49,6 +49,6 @@ logger = config['logger']
 LOGS_PATH = logger.get('logs_path')
 LOGGING_CONFIG_PATH = logger.get('logging_config_path')
 
-WATERMARK_DIR_PATH = os.path.join(os.getcwd(), 'utils')
+WATERMARK_DIR_PATH = os.path.join(BASE_DIR, 'utils')
 WATERMARK_FILE_NAME = 'watermark.png'
 WATERMARK_PATH = os.path.join(WATERMARK_DIR_PATH, WATERMARK_FILE_NAME)

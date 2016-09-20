@@ -1,11 +1,12 @@
 import os
 from datetime import datetime
 
+import shutil
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from vk_app.models import VKObject
 from vk_app.services.loading import download
-from vk_app.utils import get_year_month_date, get_valid_dirs, check_dir
+from vk_app.utils import get_year_month_date, get_valid_dirs, check_dir, find_file
 
 Base = declarative_base()
 
@@ -53,6 +54,23 @@ class Photo(Base, VKObject):
     def __str__(self):
         return "Photo from '{}' album".format(self.album)
 
+    def synchronize(self, path: str, files_paths=None):
+        file_name = self.get_file_name()
+        if files_paths:
+            old_file_path = next((file_path for file_path in files_paths if file_name in file_path), None)
+        else:
+            old_file_path = find_file(file_name, path)
+        if old_file_path:
+            file_subdirs = self.get_file_subdirs()
+            check_dir(path, *file_subdirs)
+
+            file_dir = os.path.join(path, *file_subdirs)
+            file_path = os.path.join(file_dir, file_name)
+
+            shutil.move(old_file_path, file_path)
+        else:
+            self.download(path)
+
     @classmethod
     def name(cls) -> str:
         return 'photo'
@@ -76,9 +94,9 @@ class Photo(Base, VKObject):
         image_name = self.link.split('/')[-1]
         return image_name
 
-    def get_image_content(self, path: str, is_image_marked=True) -> bytearray:
+    def get_image_content(self, path: str, marked=True) -> bytearray:
         image_path = self.get_file_path(path)
-        if is_image_marked:
+        if marked:
             image_path = image_path.replace('.jpg', '.png')
 
         with open(image_path, 'rb') as marked_image:

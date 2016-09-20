@@ -12,7 +12,7 @@ from vk_app.utils import check_dir
 from models import Photo
 from services.database import engine, save_in_db, load_photos_from_db
 from settings import (SRC_GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
-                      DST_ABSPATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
+                      DST_ABSPATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, SRC_ABSPATH)
 
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50
@@ -28,24 +28,33 @@ class CommunityApp(App):
         self.logging_config = LoggingConfig(BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
         self.logging_config.set()
 
-    def synchronize(self):
+    def synchronize(self, path: str):
         group_id = self.group_id
         values = dict(
             group_id=group_id,
             fields='screen_name'
         )
         community_info = self.get_community_info(values)
-        path = CommunityApp.get_images_path(community_info)
-        check_dir(path)
+        images_path = CommunityApp.get_images_path(community_info, path)
+        check_dir(images_path)
         params = dict()
         photos = self.load_community_albums_photos(params)
         save_in_db(self.db_session, photos)
 
         filters = dict()
         photos = load_photos_from_db(self.db_session, filters)
+        photos.sort(
+            key=lambda x: (x.album, int(x.date_time.strftime("%s")))
+        )
+
+        files_paths = list(
+            os.path.join(root, file)
+            for root, dirs, files in os.walk(images_path)
+            for file in files
+        )
         for photo in photos:
             logging.info(photo)
-            photo.synchronize(path)
+            photo.synchronize(images_path, files_paths)
 
     def load_community_wall_photos(self, params: dict) -> list:
         if 'owner_id' not in params:
@@ -85,24 +94,17 @@ class CommunityApp(App):
         return community_info
 
     @staticmethod
-    def get_images_path(community_info: dict, path=DST_ABSPATH):
+    def get_images_path(community_info: dict, path: str):
         community_screen_name = community_info['screen_name']
         images_path = os.path.join(path, community_screen_name)
         return images_path
 
-    def post_photos_on_wall(self, photos: List[Photo], group_id: int):
+    def post_photos_on_wall(self, photos: List[Photo], group_id: int, path: str):
         if not group_id:
             group_id = self.group_id
 
         values = dict(group_id=group_id)
         upload_server_url = self.get_upload_server_url(values)
-
-        values = dict(
-            group_id=self.group_id,
-            fields='screen_name'
-        )
-        community_info = self.get_community_info(values)
-        load_path = CommunityApp.get_images_path(community_info)
 
         if len(photos) > MAX_ATTACHMENTS_LIMIT:
             logging.warning(
@@ -111,7 +113,7 @@ class CommunityApp(App):
             photos = photos[:MAX_ATTACHMENTS_LIMIT]
 
         marked_images_contents = list(
-            photo.get_image_content(load_path, is_image_marked=True)
+            photo.get_image_content(path, marked=True)
             for photo in photos
         )
 
@@ -120,19 +122,22 @@ class CommunityApp(App):
             for ind, marked_image_content in enumerate(marked_images_contents)
         )
 
-        session = requests.Session()
-        response = session.post(upload_server_url, files=photos_files)
-        response = response.json()
+        with requests.Session() as session:
+            response = session.post(upload_server_url, files=photos_files)
+            response = response.json()
 
         values = dict(group_id=group_id)
         values.update(response)
-
         response = self.api_session.photos.saveWallPhoto(**values)
 
+        values['fields'] = 'screen_name'
+        community_info = self.get_community_info(values)
         for ind, raw_photo in enumerate(response):
             photo = photos[ind]
             tags = ['pic', photo.album]
-            message = photo.comment + ' '.join("#{}@{}".format(tag, community_info['screen_name']) for tag in tags)
+            message = '\n'.join(
+                [photo.comment, '\n'.join('#{}@{}'.format(tag, community_info['screen_name']) for tag in tags)]
+            )
             values = dict(access_token=self.access_token, owner_id='-{}'.format(group_id),
                           attachments='photo{}_{}'.format(raw_photo['owner_id'], raw_photo['id']),
                           message=message)

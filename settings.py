@@ -27,7 +27,6 @@ RESTRICTED_ALBUMS = app.get('restricted_albums').split(',')
 
 files = config['files']
 DST_ABSPATH = files.get('dst_abspath')
-SRC_ABSPATH = files.get('src_abspath')
 
 database = config['database']
 DB_HOST = database.get('db_host')

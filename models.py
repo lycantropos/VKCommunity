@@ -54,23 +54,6 @@ class Photo(Base, VKObject):
     def __str__(self):
         return "Photo from '{}' album".format(self.album)
 
-    def synchronize(self, path: str, files_paths=None):
-        file_name = self.get_file_name()
-        if files_paths:
-            old_file_path = next((file_path for file_path in files_paths if file_name in file_path), None)
-        else:
-            old_file_path = find_file(file_name, path)
-        if old_file_path:
-            file_subdirs = self.get_file_subdirs()
-            check_dir(path, *file_subdirs)
-
-            file_dir = os.path.join(path, *file_subdirs)
-            file_path = os.path.join(file_dir, file_name)
-
-            shutil.move(old_file_path, file_path)
-        else:
-            self.download(path)
-
     @classmethod
     def name(cls) -> str:
         return 'photo'
@@ -94,8 +77,8 @@ class Photo(Base, VKObject):
         image_name = self.link.split('/')[-1]
         return image_name
 
-    def get_image_content(self, path: str, marked=True) -> bytearray:
-        image_path = self.get_file_path(path)
+    def get_image_content(self, images_path: str, marked=True) -> bytearray:
+        image_path = self.get_file_path(images_path)
         if marked:
             image_path = image_path.replace('.jpg', '.png')
 
@@ -106,9 +89,15 @@ class Photo(Base, VKObject):
 
     @classmethod
     def from_raw(cls, raw_photo: dict) -> type:
-        return Photo(int(raw_photo['owner_id']), int(raw_photo['id']), int(raw_photo.pop('user_id', 0)),
-                     raw_photo['album'], raw_photo['text'], datetime.fromtimestamp(raw_photo['date']),
-                     Photo.get_link(raw_photo))
+        return Photo(
+            int(raw_photo['owner_id']),
+            int(raw_photo['id']),
+            int(raw_photo.get('user_id', 0)),
+            raw_photo['album'],
+            raw_photo['text'],
+            datetime.fromtimestamp(raw_photo['date']),
+            Photo.get_link(raw_photo)
+        )
 
     @staticmethod
     def get_link(raw_photo: dict) -> str:

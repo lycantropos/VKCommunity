@@ -2,21 +2,22 @@ import logging
 import os
 from typing import List
 
+import PIL.Image
 import requests
-from sqlalchemy.orm import sessionmaker
 from vk_app import App
 from vk_app.services.logging_config import LoggingConfig
 from vk_app.services.vk_objects import get_vk_objects_from_raw, get_raw_vk_objects_from_posts
-from vk_app.utils import check_dir
+from vk_app.utils import check_dir, CallRepeater
 
 from models import Photo
-from services.database import engine, save_in_db, load_photos_from_db
-from settings import (SRC_GROUP_ID, APP_ID, USER_LOGIN, USER_PASSWORD, SCOPE,
-                      DST_ABSPATH, BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, SRC_ABSPATH)
+from services.data_access import check_filters, DataAccessObject
+from services.images import mark_images
+from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL)
 
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50
-POSTING_PERIOD_IN_SEC = 86400 / MAX_POSTS_PER_DAY
+DAY_IN_SEC = 86400
+POSTING_PERIOD_IN_SEC =  DAY_IN_SEC / MAX_POSTS_PER_DAY
 
 
 class CommunityApp(App):
@@ -24,33 +25,33 @@ class CommunityApp(App):
                  api_version='5.53'):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
-        self.db_session = sessionmaker(bind=engine)()
+        self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
+        self.data_access_object = DataAccessObject(DATABASE_URL)
         self.logging_config = LoggingConfig(BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
         self.logging_config.set()
 
-    def synchronize(self, path: str):
-        group_id = self.group_id
-        values = dict(
-            group_id=group_id,
-            fields='screen_name'
-        )
-        community_info = self.get_community_info(values)
-        images_path = CommunityApp.get_images_path(community_info, path)
+    @CallRepeater.make_periodic(DAY_IN_SEC)
+    def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image):
+        self.synchronize(images_path)
+        mark_images(images_path, watermark)
+
+    def synchronize(self, images_path: str):
         check_dir(images_path)
         params = dict()
         photos = self.load_community_albums_photos(params)
-        save_in_db(self.db_session, photos)
+        self.data_access_object.save_photos(photos)
 
         filters = dict()
-        photos = load_photos_from_db(self.db_session, filters)
+        photos = self.data_access_object.load_photos(filters)
         photos.sort(
-            key=lambda x: (x.album, int(x.date_time.strftime("%s")))
+            key=lambda x: (x.album, int(x.date_time.strftime("%s")), x.link)
         )
 
         files_paths = list(
             os.path.join(root, file)
             for root, dirs, files in os.walk(images_path)
             for file in files
+            if file.endswith('.jpg')
         )
         for photo in photos:
             logging.info(photo)
@@ -89,68 +90,52 @@ class CommunityApp(App):
 
         return photos
 
-    def get_community_info(self, values: dict):
-        community_info = self.api_session.groups.getById(**values)[0]
-        return community_info
+    @CallRepeater.make_periodic(POSTING_PERIOD_IN_SEC)
+    def post_random_photos_on_community_wall(self, filters: dict, images_path: str):
+        check_filters(filters)
+        filters['random'] = True
+        filters['limit'] = filters.get('limit', 1)
+        filters['posted'] = False
+        random_photos = self.data_access_object.load_photos(filters)
+        self.post_photos_on_wall(random_photos, images_path=images_path, marked=filters.get('marked', False))
 
-    @staticmethod
-    def get_images_path(community_info: dict, path: str):
-        community_screen_name = community_info['screen_name']
-        images_path = os.path.join(path, community_screen_name)
-        return images_path
-
-    def post_photos_on_wall(self, photos: List[Photo], group_id: int, path: str):
-        if not group_id:
-            group_id = self.group_id
-
-        values = dict(group_id=group_id)
-        upload_server_url = self.get_upload_server_url(values)
-
+    def post_photos_on_wall(self, photos: List[Photo], images_path: str, marked=False):
         if len(photos) > MAX_ATTACHMENTS_LIMIT:
             logging.warning(
                 "Too many photos to post: {}, max available: {}".format(len(photos), MAX_ATTACHMENTS_LIMIT)
             )
             photos = photos[:MAX_ATTACHMENTS_LIMIT]
 
-        marked_images_contents = list(
-            photo.get_image_content(path, marked=True)
+        images_contents = list(
+            photo.get_image_content(images_path, marked=marked)
             for photo in photos
         )
 
         photos_files = list(
             ('file{}'.format(ind), ('pic.png', marked_image_content))
-            for ind, marked_image_content in enumerate(marked_images_contents)
+            for ind, marked_image_content in enumerate(images_contents)
         )
 
-        with requests.Session() as session:
-            response = session.post(upload_server_url, files=photos_files)
-            response = response.json()
-
-        values = dict(group_id=group_id)
-        values.update(response)
-        response = self.api_session.photos.saveWallPhoto(**values)
-
-        values['fields'] = 'screen_name'
-        community_info = self.get_community_info(values)
-        for ind, raw_photo in enumerate(response):
-            photo = photos[ind]
-            tags = ['pic', photo.album]
-            message = '\n'.join(
-                [photo.comment, '\n'.join('#{}@{}'.format(tag, community_info['screen_name']) for tag in tags)]
-            )
-            values = dict(access_token=self.access_token, owner_id='-{}'.format(group_id),
-                          attachments='photo{}_{}'.format(raw_photo['owner_id'], raw_photo['id']),
-                          message=message)
-            self.api_session.wall.post(**values)
-            self.db_session.query(Photo).filter_by(vk_id=photo.vk_id).update({'posted': True})
-            self.db_session.commit()
-
-    def get_upload_server_url(self, values):
+        values = dict(group_id=self.group_id)
         response = self.api_session.photos.getWallUploadServer(**values)
         upload_server_url = response['upload_url']
-        return upload_server_url
+        with requests.Session() as session:
+            response = session.post(upload_server_url, files=photos_files)
+            values.update(response.json())
 
+        response = self.api_session.photos.saveWallPhoto(**values)
 
-if __name__ == '__main__':
-    community_app = CommunityApp(APP_ID, SRC_GROUP_ID, USER_LOGIN, USER_PASSWORD, SCOPE)
-    community_app.load_community_albums_photos(dict())
+        for ind, raw_photo in enumerate(response):
+            photo = photos[ind]
+            tags = ['pic', photo.album.replace(' ', '_')]
+            message = '\n'.join([
+                photo.comment, '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name']) for tag in tags)
+            ])
+            self.api_session.wall.post(
+                access_token=self.access_token,
+                owner_id='-{}'.format(self.group_id),
+                attachments='photo{}_{}'.format(raw_photo['owner_id'], raw_photo['id']),
+                message=message
+            )
+            photo.posted = True
+        self.data_access_object.save_photos(photos)

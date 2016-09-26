@@ -32,7 +32,7 @@ def alpha_composite(src: np.ndarray, dst: np.ndarray) -> np.ndarray:
     return out
 
 
-def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image, save_path: str):
+def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image):
     min_image_dimension = min(image.size)
     watermark_length = int(min_image_dimension / 4.)
 
@@ -55,18 +55,19 @@ def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image, save_pat
         foreground_rgb = 255 - foreground_rgb
         foreground_array = np.dstack((foreground_rgb, foreground_alpha))
 
-    marked_image = alpha_composite(foreground_array, image_array)
-    PIL.Image.fromarray(marked_image, mode='RGBA').save(save_path)
+    marked_image_array = alpha_composite(foreground_array, image_array)
+    return PIL.Image.fromarray(marked_image_array, mode='RGBA')
 
 
-def mark_images(path: str, watermark_path: str):
-    watermark = PIL.Image.open(watermark_path)
-    for folder, _, files in os.walk(path):
+def mark_images(images_path: str, watermark: PIL.Image.Image):
+    for folder, _, files in os.walk(images_path):
         for file_path in files:
             if file_path.endswith('.jpg'):
-                path = os.path.join(folder, file_path)
-                image = PIL.Image.open(path)
-                image = image.convert('RGBA')
-                save_path = path.replace('.jpg', '.png')
-                logging.info(save_path)
-                paste_watermark(image, watermark=watermark, save_path=save_path)
+                image_path = os.path.join(folder, file_path)
+                save_path = image_path.replace('.jpg', '.png')
+                if not os.path.exists(save_path):
+                    image = PIL.Image.open(image_path)
+                    image = image.convert('RGBA')
+                    logging.info(save_path)
+                    marked_image = paste_watermark(image, watermark=watermark)
+                    marked_image.save(save_path)

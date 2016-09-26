@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from typing import List
 
 import PIL.Image
@@ -17,7 +18,7 @@ from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL)
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50
 DAY_IN_SEC = 86400
-POSTING_PERIOD_IN_SEC =  DAY_IN_SEC / MAX_POSTS_PER_DAY
+POSTING_PERIOD_IN_SEC = DAY_IN_SEC / MAX_POSTS_PER_DAY
 
 
 class CommunityApp(App):
@@ -32,13 +33,21 @@ class CommunityApp(App):
 
     @CallRepeater.make_periodic(DAY_IN_SEC)
     def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image):
-        self.synchronize(images_path)
+        self.synchronize_files(images_path)
         mark_images(images_path, watermark)
 
-    def synchronize(self, images_path: str):
+    # TODO: write this to remove posts which are earlier than earliest of posted photos
+    # and to unset posted for photos which are later than latest of posts
+    def synchronize_posts(self):
+        filters = dict()
+        photos = self.data_access_object.load_photos(filters)
+        params = dict()
+        community_wall_posts = self.load_wall_posts(params)
+
+    def synchronize_files(self, images_path: str):
         check_dir(images_path)
         params = dict()
-        photos = self.load_community_albums_photos(params)
+        photos = self.load_albums_photos(params)
         self.data_access_object.save_photos(photos)
 
         filters = dict()
@@ -57,22 +66,27 @@ class CommunityApp(App):
             logging.info(photo)
             photo.synchronize(images_path, files_paths)
 
-    def load_community_wall_photos(self, params: dict) -> list:
-        if 'owner_id' not in params:
-            params['owner_id'] = '-{}'.format(self.group_id)
-
-        album_title = 'wall'
-
-        community_wall_posts = self.get_items('wall.get', params)
+    def load_wall_photos(self, params: dict) -> list:
+        community_wall_posts = self.load_wall_posts(params)
         raw_photos = get_raw_vk_objects_from_posts(Photo, community_wall_posts)
 
         for raw_photo in raw_photos:
-            raw_photo['album'] = album_title
+            raw_photo['album'] = 'wall'
 
-        photos = get_vk_objects_from_raw(Photo, raw_photos)
+        photos = list(
+            Photo.from_raw(raw_vk_object)
+            for raw_vk_object in raw_photos
+        )
         return photos
 
-    def load_community_albums_photos(self, params: dict) -> list:
+    def load_wall_posts(self, params: dict):
+        if 'owner_id' not in params:
+            params['owner_id'] = '-{}'.format(self.group_id)
+
+        wall_posts = self.get_items('wall.get', params)
+        return wall_posts
+
+    def load_albums_photos(self, params: dict) -> list:
         if 'owner_id' not in params:
             params['owner_id'] = '-{}'.format(self.group_id)
 
@@ -97,9 +111,9 @@ class CommunityApp(App):
         filters['limit'] = filters.get('limit', 1)
         filters['posted'] = False
         random_photos = self.data_access_object.load_photos(filters)
-        self.post_photos_on_wall(random_photos, images_path=images_path, marked=filters.get('marked', False))
+        self.post_photos_on_community_wall(random_photos, images_path=images_path, marked=filters.get('marked', False))
 
-    def post_photos_on_wall(self, photos: List[Photo], images_path: str, marked=False):
+    def post_photos_on_community_wall(self, photos: List[Photo], images_path: str, marked=False):
         if len(photos) > MAX_ATTACHMENTS_LIMIT:
             logging.warning(
                 "Too many photos to post: {}, max available: {}".format(len(photos), MAX_ATTACHMENTS_LIMIT)
@@ -138,4 +152,5 @@ class CommunityApp(App):
                 message=message
             )
             photo.posted = True
+            photo.date_time = datetime.utcnow()
         self.data_access_object.save_photos(photos)

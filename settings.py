@@ -48,6 +48,9 @@ logger = config['logger']
 LOGS_PATH = logger.get('logs_path')
 LOGGING_CONFIG_PATH = logger.get('logging_config_path')
 
+formatting = config['formatting']
+DATETIME_FORMAT = formatting.get('datetime_format')
+
 WATERMARK_DIR_PATH = os.path.join(BASE_DIR, 'utils')
 WATERMARK_FILE_NAME = 'watermark.png'
 WATERMARK_PATH = os.path.join(WATERMARK_DIR_PATH, WATERMARK_FILE_NAME)

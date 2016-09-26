@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import func
 
 from models import Photo
+from settings import DATETIME_FORMAT
 
 
 class DataAccessObject:
@@ -74,8 +75,6 @@ class DataAccessObject:
         photos = q.all()
         return photos
 
-
-DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
 OWNER_ID_RE = r'^(-?\d+$)$'
 

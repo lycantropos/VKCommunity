@@ -7,13 +7,13 @@ import PIL.Image
 import requests
 from vk_app import App
 from vk_app.services.logging_config import LoggingConfig
-from vk_app.services.vk_objects import get_vk_objects_from_raw, get_raw_vk_objects_from_posts
+from vk_app.services.vk_objects import get_raw_vk_objects_from_posts
 from vk_app.utils import check_dir, CallRepeater
 
 from models import Photo
 from services.data_access import check_filters, DataAccessObject
 from services.images import mark_images
-from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL)
+from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL, SRC_GROUP_ID)
 
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50
@@ -33,6 +33,9 @@ class CommunityApp(App):
 
     @CallRepeater.make_periodic(DAY_IN_SEC)
     def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image):
+        params = dict(owner_id='-{}'.format(SRC_GROUP_ID))
+        photos = self.load_albums_photos(params)
+        self.data_access_object.save_photos(photos)
         self.synchronize_files(images_path)
         mark_images(images_path, watermark)
 
@@ -45,11 +48,6 @@ class CommunityApp(App):
         community_wall_posts = self.load_wall_posts(params)
 
     def synchronize_files(self, images_path: str):
-        check_dir(images_path)
-        params = dict()
-        photos = self.load_albums_photos(params)
-        self.data_access_object.save_photos(photos)
-
         filters = dict()
         photos = self.data_access_object.load_photos(filters)
         photos.sort(
@@ -62,6 +60,7 @@ class CommunityApp(App):
             for file in files
             if file.endswith('.jpg')
         )
+        check_dir(images_path)
         for photo in photos:
             logging.info(photo)
             photo.synchronize(images_path, files_paths)
@@ -74,8 +73,8 @@ class CommunityApp(App):
             raw_photo['album'] = 'wall'
 
         photos = list(
-            Photo.from_raw(raw_vk_object)
-            for raw_vk_object in raw_photos
+            Photo.from_raw(raw_photo)
+            for raw_photo in raw_photos
         )
         return photos
 
@@ -99,7 +98,11 @@ class CommunityApp(App):
             raw_photos = self.get_items('photos.get', params)
             for raw_photo in raw_photos:
                 raw_photo['album'] = album_title
-            album_photos = get_vk_objects_from_raw(Photo, raw_photos)
+            album_photos = list(
+                Photo.from_raw(raw_photo)
+                for raw_photo in raw_photos
+            )
+
             photos += album_photos
 
         return photos

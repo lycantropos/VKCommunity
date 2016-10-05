@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from typing import List
 
@@ -23,7 +22,7 @@ class DataAccessObject:
             self.session.merge(photo)
         self.session.commit()
 
-    def load_photos(self, filters: dict) -> List[Photo]:
+    def load_photos(self, **filters) -> List[Photo]:
         q = self.session.query(Photo)
 
         owner_id = filters.get('owner_id')
@@ -43,15 +42,15 @@ class DataAccessObject:
                 Photo.album.notin_(restricted_albums)
             )
 
-        start_time = filters.get('start_time')
-        if start_time is not None:
+        start_datetime = filters.get('start_datetime')
+        if start_datetime is not None:
             q = q.filter(
-                Photo.date_time >= start_time
+                Photo.date_time >= start_datetime
             )
-        end_time = filters.get('end_time')
-        if end_time is not None:
+        end_datetime = filters.get('end_datetime')
+        if end_datetime is not None:
             q = q.filter(
-                Photo.date_time <= end_time
+                Photo.date_time <= end_datetime
             )
 
         posted = filters.get('posted')
@@ -76,13 +75,10 @@ class DataAccessObject:
         return photos
 
 
-OWNER_ID_RE = r'^(-?\d+$)$'
-
-
-def check_filters(filters: dict):
+def check_filters(filters):
     owner_id = filters.get('owner_id')
     if owner_id is not None:
-        filters['owner_id'] = re.match(OWNER_ID_RE, owner_id).group(1)
+        filters['owner_id'] = int(owner_id)
 
     albums = filters.get('albums')
     if albums is not None:
@@ -91,28 +87,40 @@ def check_filters(filters: dict):
     if restricted_albums is not None:
         restricted_albums[:] = restricted_albums
 
-    start_time = filters.get('start_time')
-    if start_time is not None:
-        filters['start_time'] = datetime.strptime(start_time, DATETIME_FORMAT)
-    end_time = filters.get('end_time')
-    if end_time is not None:
-        filters['end_time'] = datetime.strptime(end_time, DATETIME_FORMAT)
+    start_datetime = filters.get('start_datetime')
+    if start_datetime is not None:
+        filters['start_datetime'] = datetime.utcfromtimestamp(start_datetime)
+    end_datetime = filters.get('end_datetime')
+    if end_datetime is not None:
+        filters['end_datetime'] = datetime.utcfromtimestamp(end_datetime)
 
     posted = filters.get('posted')
     if posted is not None:
-        filters['random'] = int(posted) == 1
+        posted = int(posted)
+        if posted not in [0, 1]:
+            raise ValueError("'posted' filter parameter should be `bool` type value or "
+                             "`int` type value from range {0, 1}")
+        filters['posted'] = posted == 1
 
     marked = filters.get('marked')
     if marked is not None:
-        filters['marked'] = int(marked) == 1
+        marked = int(marked)
+        if marked not in [0, 1]:
+            raise ValueError("'marked' filter parameter should be `bool` type value or "
+                             "`int` type value from range {0, 1}")
+        filters['marked'] = marked == 1
 
     random = filters.get('random')
     if random is not None:
-        filters['random'] = int(random) == 1
+        random = int(random)
+        if random not in [0, 1]:
+            raise ValueError("'random' filter parameter should be `bool` type value or "
+                             "`int` type value from range {0, 1}")
+        filters['random'] = random == 1
 
     limit = filters.get('limit')
     if limit is not None:
-        filters['offset'] = int(limit)
+        filters['limit'] = int(limit)
 
     offset = filters.get('offset')
     if offset is not None:

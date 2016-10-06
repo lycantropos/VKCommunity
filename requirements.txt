@@ -1,7 +1,0 @@
-click==6.6
-SQLAlchemy==1.0.15
-requests==2.11.1
-numpy==1.11.1
-scikit-image==0.12.3
-Pillow==3.4.0
-git+https://github.com/lycantropos/VKApp.git#egg=vk_app

@@ -5,8 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import func
 
-from models import Photo
-from settings import DATETIME_FORMAT
+from vk_community.models import Photo
 
 
 class DataAccessObject:

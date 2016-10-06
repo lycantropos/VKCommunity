@@ -10,10 +10,10 @@ from vk_app.models.post import VKPost
 from vk_app.services.logging_config import LoggingConfig
 from vk_app.utils import check_dir, CallRepeater, CallDelayer
 
-from models import Photo
-from services.data_access import check_filters, DataAccessObject
-from services.images import mark_images
 from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL, SRC_GROUP_ID)
+from vk_community.models import Photo
+from vk_community.services import check_filters, DataAccessObject
+from vk_community.services import mark_images
 
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50

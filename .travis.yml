@@ -5,8 +5,8 @@ python:
   - "nightly" # currently points to 3.6-dev
 # command to install dependencies
 install:
-- python3.5 -m pip install -e .
-- python3.5 -m pip install git+https://github.com/lycantropos/VKApp.git#egg=VKApp
+- python -m pip install -e .
+- python -m pip install git+https://github.com/lycantropos/VKApp.git#egg=VKApp
 # command to run tests
 script:
-- python3.5 manage.py test_dao
+- python manage.py test_dao

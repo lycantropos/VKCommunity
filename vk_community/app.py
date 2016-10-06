@@ -7,10 +7,11 @@ import PIL.Image
 import requests
 from vk_app import App
 from vk_app.models.post import VKPost
+from vk_app.services.logging_config import LoggingConfig
 from vk_app.utils import check_dir, CallRepeater, CallDelayer
 
 from vk_community.models import Photo
-from vk_community.services.data_access import check_filters
+from vk_community.services.data_access import check_filters, DataAccessObject
 from vk_community.services.images import mark_images
 
 MAX_ATTACHMENTS_LIMIT = 10
@@ -21,8 +22,9 @@ MINIMAL_INTERVAL_BETWEEN_DELETE_REQUESTS_IN_SECONDS = 1.7
 
 
 class CommunityApp(App):
-    def __init__(self, app_id: int, group_id: int, user_login='', user_password='', scope='', access_token=None,
-                 api_version='5.57', data_access_object=None, logging_config=None):
+    def __init__(self, app_id: int, group_id: int, user_login: str = '', user_password: str = '', scope: str = '',
+                 access_token: str = None, api_version: str = '5.57', data_access_object: DataAccessObject = None,
+                 logging_config: LoggingConfig = None):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
         self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
@@ -32,7 +34,7 @@ class CommunityApp(App):
 
     @CallRepeater.make_periodic(DAY_IN_SEC)
     def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image, **params):
-        photos = self.load_albums_photos(params)
+        photos = self.load_albums_photos(**params)
         self.data_access_object.save_photos(photos)
         self.synchronize_files(images_path)
         mark_images(images_path, watermark)
@@ -87,7 +89,7 @@ class CommunityApp(App):
         if 'owner_id' not in params:
             params['owner_id'] = -self.group_id
 
-        raw_wall_posts = self.get_items('wall.get', params)
+        raw_wall_posts = self.get_items('wall.get', **params)
         wall_posts = list(
             VKPost.from_raw(raw_wall_post)
             for raw_wall_post in raw_wall_posts
@@ -99,17 +101,17 @@ class CommunityApp(App):
         values = dict(owner_id=wall_post.owner_id, post_id=wall_post.object_id)
         self.api_session.wall.delete(**values)
 
-    def load_albums_photos(self, params: dict) -> list:
+    def load_albums_photos(self, **params) -> List[Photo]:
         if 'owner_id' not in params:
             params['owner_id'] = -self.group_id
 
-        albums = self.get_items('photos.getAlbums', params)
+        albums = self.get_items('photos.getAlbums', **params)
 
         photos = list()
         for album in albums:
             album_title = album['title']
             params['album_id'] = album['id']
-            raw_photos = self.get_items('photos.get', params)
+            raw_photos = self.get_items('photos.get', **params)
             album_photos = list(
                 Photo.from_raw(raw_photo)
                 for raw_photo in raw_photos

@@ -11,7 +11,7 @@ setup(
     description='Simple application for VK community content administrating by using `vk_app` module',
     install_requires=[
         'click==6.6',
-        'SQLAlchemy==1.0.15',
+        'SQLAlchemy==1.1.0',
         'requests==2.11.1',
         'numpy==1.11.1',
         'scikit-image==0.12.3',

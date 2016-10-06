@@ -7,13 +7,11 @@ import PIL.Image
 import requests
 from vk_app import App
 from vk_app.models.post import VKPost
-from vk_app.services.logging_config import LoggingConfig
 from vk_app.utils import check_dir, CallRepeater, CallDelayer
 
-from settings import (BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH, DATABASE_URL, SRC_GROUP_ID)
 from vk_community.models import Photo
-from vk_community.services import check_filters, DataAccessObject
-from vk_community.services import mark_images
+from vk_community.services.data_access import check_filters
+from vk_community.services.images import mark_images
 
 MAX_ATTACHMENTS_LIMIT = 10
 MAX_POSTS_PER_DAY = 50
@@ -24,23 +22,22 @@ MINIMAL_INTERVAL_BETWEEN_DELETE_REQUESTS_IN_SECONDS = 1.7
 
 class CommunityApp(App):
     def __init__(self, app_id: int, group_id: int, user_login='', user_password='', scope='', access_token=None,
-                 api_version='5.57'):
+                 api_version='5.57', data_access_object=None, logging_config=None):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
         self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
-        self.data_access_object = DataAccessObject(DATABASE_URL)
-        self.logging_config = LoggingConfig(BASE_DIR, LOGGING_CONFIG_PATH, LOGS_PATH)
+        self.data_access_object = data_access_object
+        self.logging_config = logging_config
         self.logging_config.set()
 
     @CallRepeater.make_periodic(DAY_IN_SEC)
-    def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image):
-        params = dict(owner_id=-SRC_GROUP_ID)
+    def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image, **params):
         photos = self.load_albums_photos(params)
         self.data_access_object.save_photos(photos)
         self.synchronize_files(images_path)
         mark_images(images_path, watermark)
 
-    def synchronize_wall_posts(self, params: dict):
+    def synchronize_wall_posts(self, **params):
         if 'owner_id' not in params:
             params['owner_id'] = -self.group_id
         filters = dict(posted=1)

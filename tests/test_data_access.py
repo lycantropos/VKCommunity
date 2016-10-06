@@ -2,7 +2,7 @@ import calendar
 import datetime
 import unittest
 
-from vk_community.services import check_filters
+from vk_community.services.data_access import check_filters
 
 
 class UnitTestDataAccess(unittest.TestCase):

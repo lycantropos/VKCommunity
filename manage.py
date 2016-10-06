@@ -2,7 +2,7 @@ import unittest
 
 import click
 
-from vk_community.tests.test_data_access import UnitTestDataAccess, UnitTestDataAccessExceptions
+from tests.test_data_access import UnitTestDataAccess, UnitTestDataAccessExceptions
 
 
 @click.group(name='test', invoke_without_command=False)

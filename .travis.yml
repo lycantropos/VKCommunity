@@ -6,7 +6,7 @@ python:
 # command to install dependencies
 install:
 - python3.5 -m pip install -e .
-- python3.5 -m pip install git+https://github.com/lycantropos/VKApp.git#egg=vk_app
+- python3.5 -m pip install git+https://github.com/lycantropos/VKApp.git#egg=VKApp
 # command to run tests
 script:
-- python3.5 -m manage.py test_dao
+- python3.5 manage.py test_dao

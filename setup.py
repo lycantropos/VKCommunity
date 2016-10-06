@@ -18,6 +18,6 @@ setup(
         'Pillow==3.4.0',
     ],
     dependency_links=[
-        'git+https://github.com/lycantropos/VKApp.git#egg=vk_app'
+        'git+https://github.com/lycantropos/VKApp.git#egg=VKApp'
     ]
 )

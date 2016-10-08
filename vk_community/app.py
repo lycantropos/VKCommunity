@@ -7,7 +7,6 @@ import PIL.Image
 import requests
 from vk_app import App
 from vk_app.models.post import VKPost
-from vk_app.services.logging_config import LoggingConfig
 from vk_app.utils import check_dir, CallRepeater, CallDelayer
 
 from vk_community.models import Photo
@@ -22,29 +21,47 @@ MINIMAL_INTERVAL_BETWEEN_DELETE_REQUESTS_IN_SECONDS = 1.7
 
 
 class CommunityApp(App):
-    def __init__(self, app_id: int, group_id: int, user_login: str = '', user_password: str = '', scope: str = '',
-                 access_token: str = None, api_version: str = '5.57', data_access_object: DataAccessObject = None,
-                 logging_config: LoggingConfig = None):
+    def __init__(self, app_id: int = 0, group_id: int = 1, user_login: str = '', user_password: str = '',
+                 scope: str = '', access_token: str = None, api_version: str = '5.57',
+                 dao: DataAccessObject = DataAccessObject('sqlite:///community_app.db')):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
         self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
-        self.data_access_object = data_access_object
-        self.logging_config = logging_config
-        self.logging_config.set()
+        self.dao = dao
 
     @CallRepeater.make_periodic(DAY_IN_SEC)
     def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image, **params):
-        photos = self.load_albums_photos(**params)
-        self.data_access_object.save_photos(photos)
-        self.synchronize_files(images_path)
+        self.synchronize(images_path, **params)
         mark_images(images_path, watermark)
+
+    def synchronize(self, images_path: str, **params):
+        self.synchronize_dao(params)
+        self.synchronize_files(images_path)
+
+    def synchronize_dao(self, params):
+        photos = self.load_albums_photos(**params)
+        self.dao.save_photos(photos)
+
+    def synchronize_files(self, path: str):
+        photos = self.dao.load_photos()
+
+        files_paths = list(
+            os.path.join(root, file)
+            for root, dirs, files in os.walk(path)
+            for file in files
+            if file.endswith('.jpg')
+        )
+        check_dir(path)
+        for photo in photos:
+            logging.info(photo)
+            photo.synchronize(path, files_paths)
 
     def synchronize_wall_posts(self, **params):
         if 'owner_id' not in params:
             params['owner_id'] = -self.group_id
         filters = dict(posted=1)
         check_filters(filters)
-        posted_photos = self.data_access_object.load_photos(**filters)
+        posted_photos = self.dao.load_photos(**filters)
         if posted_photos:
             posted_photos.sort(key=lambda x: (x.date_time, x.object_id), reverse=True)
             first_posted_photo_date = posted_photos[-1].date_time
@@ -66,24 +83,7 @@ class CommunityApp(App):
                     unposted_photos.append(posted_photo)
                 else:
                     break
-            self.data_access_object.save_photos(unposted_photos)
-
-    def synchronize_files(self, images_path: str):
-        photos = self.data_access_object.load_photos()
-        photos.sort(
-            key=lambda x: (x.album, int(x.date_time.strftime("%s")), x.link)
-        )
-
-        files_paths = list(
-            os.path.join(root, file)
-            for root, dirs, files in os.walk(images_path)
-            for file in files
-            if file.endswith('.jpg')
-        )
-        check_dir(images_path)
-        for photo in photos:
-            logging.info(photo)
-            photo.synchronize(images_path, files_paths)
+            self.dao.save_photos(unposted_photos)
 
     def load_wall_posts(self, params: dict) -> List[VKPost]:
         if 'owner_id' not in params:
@@ -129,7 +129,7 @@ class CommunityApp(App):
         filters['random'] = True
         filters['limit'] = filters.get('limit', 1)
         filters['posted'] = False
-        random_photos = self.data_access_object.load_photos(**filters)
+        random_photos = self.dao.load_photos(**filters)
         self.post_photos_on_community_wall(random_photos, images_path=images_path, marked=filters.get('marked', False))
 
     def post_photos_on_community_wall(self, photos: List[Photo], images_path: str, marked=False):
@@ -175,4 +175,4 @@ class CommunityApp(App):
             )
             photo.posted = True
             photo.date_time = datetime.utcnow()
-        self.data_access_object.save_photos(photos)
+        self.dao.save_photos(photos)

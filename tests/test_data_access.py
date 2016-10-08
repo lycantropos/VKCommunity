@@ -2,10 +2,38 @@ import calendar
 import datetime
 import unittest
 
-from vk_community.services.data_access import check_filters
+from sqlalchemy.engine.url import make_url
+from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy_utils import drop_database
+
+from vk_community.models import Photo
+from vk_community.services.data_access import check_filters, DataAccessObject
 
 
-class UnitTestDataAccess(unittest.TestCase):
+class IntegrationTestsDataAccess(unittest.TestCase):
+    def setUp(self):
+        self.dao_url = make_url('sqlite:///community_app.db')
+        if not database_exists(self.dao_url):
+            create_database(self.dao_url)
+        self.dao = DataAccessObject(self.dao_url)
+        self.photos = [
+            Photo(owner_id=-129836227, object_id=431928280, album_id=-7, album='wall',
+                  date_time=datetime.datetime(2016, 9, 30, 23, 55, 7), user_id=100, comment=None,
+                  link='http://cs638122.vk.me/v638122248/1c41/SnfoaFP-Hfk.jpg')
+        ]
+
+    def tearDown(self):
+        drop_database(self.dao_url)
+
+    def test_save_photos(self):
+        if not self.dao.engine.dialect.has_table(self.dao.engine, Photo.__tablename__):
+            Photo.__table__.create(bind=self.dao.engine)
+        self.dao.save_photos(self.photos)
+        photos = self.dao.session.query(Photo).all()
+        self.assertListEqual(photos, self.photos)
+
+
+class UnitTestsDataAccess(unittest.TestCase):
     def setUp(self):
         self.raw_filters = dict(
             owner_id='-14',
@@ -31,14 +59,13 @@ class UnitTestDataAccess(unittest.TestCase):
             limit=100,
             offset=10
         )
-        self.maxDiff = None
 
     def test_check_filters(self):
         check_filters(self.raw_filters)
         self.assertDictEqual(self.raw_filters, self.filters)
 
 
-class UnitTestDataAccessExceptions(unittest.TestCase):
+class UnitTestsExceptionsDataAccess(unittest.TestCase):
     def test_check_filters_bad_int_parameters(self):
         # owner id may be integer or string representing integer with hyphen for negative values, dash is not an option
         self.assertRaises(ValueError, check_filters, dict(owner_id='–14'))

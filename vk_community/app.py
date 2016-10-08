@@ -14,10 +14,6 @@ from vk_community.services.data_access import check_filters, DataAccessObject
 from vk_community.services.images import mark_images
 
 MAX_ATTACHMENTS_LIMIT = 10
-MAX_POSTS_PER_DAY = 50
-DAY_IN_SEC = 86400
-POSTING_PERIOD_IN_SEC = DAY_IN_SEC / MAX_POSTS_PER_DAY
-MINIMAL_INTERVAL_BETWEEN_DELETE_REQUESTS_IN_SECONDS = 1.7
 
 
 class CommunityApp(App):
@@ -29,7 +25,6 @@ class CommunityApp(App):
         self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
         self.dao = dao
 
-    @CallRepeater.make_periodic(DAY_IN_SEC)
     def synchronize_and_mark(self, images_path: str, watermark: PIL.Image.Image, **params):
         self.synchronize(images_path, **params)
         mark_images(images_path, watermark)
@@ -96,7 +91,6 @@ class CommunityApp(App):
         )
         return wall_posts
 
-    @CallDelayer.make_delayed(MINIMAL_INTERVAL_BETWEEN_DELETE_REQUESTS_IN_SECONDS)
     def delete_wall_post(self, wall_post: VKPost):
         values = dict(owner_id=wall_post.owner_id, post_id=wall_post.object_id)
         self.api_session.wall.delete(**values)
@@ -123,7 +117,6 @@ class CommunityApp(App):
 
         return photos
 
-    @CallRepeater.make_periodic(POSTING_PERIOD_IN_SEC)
     def post_random_photos_on_community_wall(self, images_path: str, **filters: dict):
         check_filters(filters)
         filters['random'] = True

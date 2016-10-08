@@ -9,3 +9,4 @@ install:
 # command to run tests
 script:
 - python manage.py test_dao
+- python manage.py test_app

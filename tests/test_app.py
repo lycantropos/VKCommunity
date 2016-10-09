@@ -100,7 +100,3 @@ class IntegrationTestsApp(unittest.TestCase):
         self.app.synchronize_files(self.path)
         self.assertTrue(all(not os.path.exists(old_photo_path) for old_photo_path in old_photos_paths))
         self.assertTrue(all(os.path.exists(new_photo_path) for new_photo_path in new_photos_paths))
-
-
-if __name__ == '__main__':
-    unittest.main()

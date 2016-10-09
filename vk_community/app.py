@@ -137,7 +137,7 @@ class CommunityApp(App):
         upload_server_url = response['upload_url']
 
         images_contents = list(
-            photo.get_image_content(images_path, marked=marked)
+            photo.get_file_content(images_path, marked=marked)
             for photo in photos
         )
         pic_tag = 'pic'

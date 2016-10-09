@@ -91,6 +91,3 @@ class UnitTestsExceptionsDataAccess(unittest.TestCase):
         )
         self.assertRaises(TypeError, check_filters, dict(start_datetime='2154-10-30 21:49:55'))
 
-
-if __name__ == '__main__':
-    unittest.main()

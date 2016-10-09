@@ -156,7 +156,7 @@ class CommunityApp(App):
             photo = photos[ind]
             tags = [pic_tag, photo.album.replace(' ', '_')]
             message = '\n'.join([
-                photo.comment, '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name']) for tag in tags)
+                photo.text, '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name']) for tag in tags)
             ])
             self.api_session.wall.post(
                 access_token=self.access_token,

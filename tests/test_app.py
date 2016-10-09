@@ -60,7 +60,7 @@ class IntegrationTestsApp(unittest.TestCase):
         Photo.__table__.create(bind=self.app.dao.engine)
         self.photos = [
             Photo(owner_id=-129836227, object_id=431928280, album_id=-7, album='wall',
-                  date_time=datetime.datetime(2016, 9, 30, 23, 55, 7), user_id=100, comment=None,
+                  date_time=datetime.datetime(2016, 9, 30, 23, 55, 7), user_id=100, text=None,
                   link='http://cs638122.vk.me/v638122248/1c41/SnfoaFP-Hfk.jpg')
         ]
 

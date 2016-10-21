@@ -6,7 +6,6 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy_utils import create_database
 from sqlalchemy_utils import database_exists
 from sqlalchemy_utils import drop_database
-
 from vk_community.app import CommunityApp
 from vk_community.models import Photo
 from vk_community.services.data_access import DataAccessObject

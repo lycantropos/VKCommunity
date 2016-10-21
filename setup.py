@@ -12,7 +12,7 @@ setup(
     install_requires=[
         'click==6.6',
         'SQLAlchemy==1.1.0',
-        'SQLAlchemy-Utils',
+        'SQLAlchemy-Utils==0.32.9',
         'requests==2.11.1',
         'numpy==1.11.1',
         'scikit-image==0.12.3',

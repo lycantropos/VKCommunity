@@ -1,7 +1,6 @@
 import unittest
 
 import click
-
 from tests.test_app import IntegrationTestsApp
 from tests.test_data_access import UnitTestsDataAccess, UnitTestsExceptionsDataAccess, IntegrationTestsDataAccess
 

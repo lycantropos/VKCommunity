@@ -1,14 +1,14 @@
+import datetime
 import logging
 import os
-from datetime import datetime
-from typing import List
+from collections import defaultdict
+from typing import List, Callable, Dict
 
 import PIL.Image
-import requests
 from vk_app import App
-from vk_app.models.post import VKPost
-from vk_app.utils import check_dir, CallRepeater, CallDelayer
-
+from vk_app.post import VKPost
+from vk_app.attachables import VKFileAttachable
+from vk_app.utils import check_dir
 from vk_community.models import Photo
 from vk_community.services.data_access import check_filters, DataAccessObject
 from vk_community.services.images import mark_images
@@ -52,15 +52,14 @@ class CommunityApp(App):
             photo.synchronize(path, files_paths)
 
     def synchronize_wall_posts(self, **params):
-        if 'owner_id' not in params:
-            params['owner_id'] = -self.group_id
+        params.setdefault('owner_id', -self.group_id)
         filters = dict(posted=1)
         check_filters(filters)
         posted_photos = self.dao.load_photos(**filters)
         if posted_photos:
             posted_photos.sort(key=lambda x: (x.date_time, x.object_id), reverse=True)
             first_posted_photo_date = posted_photos[-1].date_time
-            posts = self.load_wall_posts(params)
+            posts = self.load_posts(**params)
             posts.sort(key=lambda x: (x.date_time, x.object_id))
             posts_for_delete = list()
             for ind, post in enumerate(posts):
@@ -80,11 +79,10 @@ class CommunityApp(App):
                     break
             self.dao.save_photos(unposted_photos)
 
-    def load_wall_posts(self, params: dict) -> List[VKPost]:
-        if 'owner_id' not in params:
-            params['owner_id'] = -self.group_id
+    def load_posts(self, **params) -> List[VKPost]:
+        params.setdefault('owner_id', -self.group_id)
 
-        raw_wall_posts = self.get_items('wall.get', **params)
+        raw_wall_posts = self.get_all_objects('wall.get', **params)
         wall_posts = list(
             VKPost.from_raw(raw_wall_post)
             for raw_wall_post in raw_wall_posts
@@ -92,20 +90,23 @@ class CommunityApp(App):
         return wall_posts
 
     def delete_wall_post(self, wall_post: VKPost):
+        for attachment in wall_post.attachments:
+            for key, vk_attachment in attachment:
+                params = {'owner_id': vk_attachment.owner_id, '{}_id'.format(key): vk_attachment.object_id}
+                self.api_session.__call__('{}.delete'.format(key), **params)
         values = dict(owner_id=wall_post.owner_id, post_id=wall_post.object_id)
         self.api_session.wall.delete(**values)
 
     def load_albums_photos(self, **params) -> List[Photo]:
-        if 'owner_id' not in params:
-            params['owner_id'] = -self.group_id
+        params.setdefault('owner_id', -self.group_id)
 
-        albums = self.get_items('photos.getAlbums', **params)
+        albums = self.get_all_objects('photos.getAlbums', **params)
 
         photos = list()
         for album in albums:
             album_title = album['title']
             params['album_id'] = album['id']
-            raw_photos = self.get_items('photos.get', **params)
+            raw_photos = self.get_all_objects('photos.get', **params)
             album_photos = list(
                 Photo.from_raw(raw_photo)
                 for raw_photo in raw_photos
@@ -116,6 +117,81 @@ class CommunityApp(App):
             photos += album_photos
 
         return photos
+
+    def duplicate_post(self, post: VKPost, reload_path: str = None, editor: Callable[[str], str] = lambda x: x,
+                       **params):
+        params.setdefault('owner_id', -self.group_id)
+        params.setdefault('from_group', 1)
+        message = editor(post.text)
+
+        if reload_path is not None:
+            post.attachments = self.reload_attachments(post.attachments, reload_path=reload_path)
+
+        attachments = ','.join(
+            '{key}{vk_id}'.format(key=key, vk_id=content.vk_id)
+            for attachment in post.attachments
+            for key, content in attachment.items()
+        )
+        self.api_session.wall.post(message=message, attachments=attachments, **params)
+
+    def reload_attachments(self, attachments: List[Dict[str, VKFileAttachable]], reload_path: str):
+        new_attachments = list()
+        for attachment in attachments:
+            for key, attachable in attachment.items():
+                try:
+                    attachable.download(reload_path)
+                except AttributeError:
+                    logging.exception('Cannot download attachment of type: `{}`'.format(type(attachable)))
+                    new_attachments.append({key: attachable})
+
+        attachables_files = defaultdict(list)
+        for ind, attachment in enumerate(attachments):
+            if attachment in new_attachments:
+                continue
+            for attachable in attachment.values():
+                file_path = attachable.get_file_path(reload_path)
+                with open(file_path, mode='rb') as file:
+                    attachables_files[attachable.__class__].append(
+                        (
+                            'file',
+                            (attachable.get_file_name(), file.read())
+                        )
+                    )
+
+        for attachable_type, files in attachables_files.items():
+            get_upload_server_method = attachable_type.identify_getUploadServer_method(dst_type='wall')
+            upload_url = self.get_upload_server_url(
+                get_upload_server_method, group_id=self.group_id
+            )
+            response = list(
+                self.upload_files_on_vk_server(
+                    attachable_type.identify_save_method(dst_type='wall'), upload_url, files=[file],
+                    group_id=self.group_id,
+                )
+                for file in files
+            )
+            vk_attachables = list()
+            for raw_vk_attachment in response:
+                if isinstance(raw_vk_attachment, list):
+                    raw_vk_attachment, = raw_vk_attachment
+                vk_attachables.append(
+                    attachable_type.from_raw(raw_vk_attachment)
+                )
+
+            new_attachments.extend(
+                list({vk_attachable.key(): vk_attachable} for vk_attachable in vk_attachables)
+            )
+
+        ordered_new_attachments = list()
+        for attachment in attachments:
+            due_attachment = next(
+                new_attachment
+                for new_attachment in new_attachments
+                if new_attachment.keys() == attachment.keys()
+            )
+            new_attachments.remove(due_attachment)
+            ordered_new_attachments.append(due_attachment)
+        return ordered_new_attachments
 
     def post_random_photos_on_community_wall(self, images_path: str, **filters: dict):
         check_filters(filters)
@@ -132,9 +208,8 @@ class CommunityApp(App):
             )
             photos = photos[:MAX_ATTACHMENTS_LIMIT]
 
-        values = dict(group_id=self.group_id)
-        response = self.api_session.photos.getWallUploadServer(**values)
-        upload_server_url = response['upload_url']
+        params = dict(group_id=self.group_id)
+        upload_url = self.get_upload_server_url('photos.getWallUploadServer', **params)
 
         images_contents = list(
             photo.get_file_content(images_path, marked=marked)
@@ -146,13 +221,10 @@ class CommunityApp(App):
             ('file{}'.format(ind), (image_name, image_content))
             for ind, image_content in enumerate(images_contents)
         )
-        with requests.Session() as session:
-            response = session.post(upload_server_url, files=images)
-            values.update(response.json())
 
-        response = self.api_session.photos.saveWallPhoto(**values)
+        raw_photos = self.upload_files_on_vk_server('photos.saveWallPhoto', upload_url, images, **params)
 
-        for ind, raw_photo in enumerate(response):
+        for ind, raw_photo in enumerate(raw_photos):
             photo = photos[ind]
             tags = [pic_tag, photo.album.replace(' ', '_')]
             message = '\n'.join([
@@ -167,5 +239,5 @@ class CommunityApp(App):
                 message=message
             )
             photo.posted = True
-            photo.date_time = datetime.utcnow()
+            photo.date_time = datetime.datetime.utcnow()
         self.dao.save_photos(photos)

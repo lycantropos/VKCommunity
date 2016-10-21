@@ -5,7 +5,6 @@ import unittest
 from sqlalchemy.engine.url import make_url
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy_utils import drop_database
-
 from vk_community.models import Photo
 from vk_community.services.data_access import check_filters, DataAccessObject
 
@@ -90,4 +89,3 @@ class UnitTestsExceptionsDataAccess(unittest.TestCase):
             ValueError, check_filters, dict(start_datetime=calendar.timegm(datetime.datetime.min.utctimetuple()) - 1)
         )
         self.assertRaises(TypeError, check_filters, dict(start_datetime='2154-10-30 21:49:55'))
-

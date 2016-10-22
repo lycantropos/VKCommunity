@@ -120,13 +120,17 @@ class CommunityApp(App):
 
     def duplicate_post(self, post: VKPost, reload_path: str = None, editor: Callable[[str], str] = lambda x: x,
                        **params):
-        params.setdefault('owner_id', -self.group_id)
-        params.setdefault('from_group', 1)
-        message = editor(post.text)
+        post.text = editor(post.text)
 
         if reload_path is not None:
             post.attachments = self.reload_attachments(post.attachments, reload_path=reload_path)
 
+        self.post_on_wall(post, **params)
+
+    def post_on_wall(self, post: VKPost, **params):
+        params.setdefault('owner_id', -self.group_id)
+        params.setdefault('from_group', 1)
+        message = post.text
         attachments = ','.join(
             '{key}{vk_id}'.format(key=key, vk_id=content.vk_id)
             for attachment in post.attachments

@@ -1,0 +1,6 @@
+MUSIXMATCH_URL = 'https://www.musixmatch.com/lyrics/'
+MUSIXMATCH_ELEMENT_CLASS_NAME = 'mxm-lyrics__content'
+LYRICS_WIKIA_URL = 'http://lyrics.wikia.com/wiki/'
+LYRICS_WIKIA_ELEMENT_CLASS_NAME = 'lyricbox'
+AZLYRICS_URL = 'http://www.azlyrics.com/lyrics/'
+AZLYRICS_ELEMENT_XPATH = '/html/body/div[3]/div/div[2]/div[6]'

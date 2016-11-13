@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='VKCommunity',
-    version='0.0.1',
+    version='0.1.1',
     packages=find_packages(exclude=["tests"]),
     url='https://github.com/lycantropos/VKCommunity',
     license='GNU GPL',
@@ -17,6 +17,10 @@ setup(
         'numpy==1.11.1',
         'scikit-image==0.12.3',
         'Pillow==3.4.0',
+        # for tags parsing
+        'mutagen==1.35.1',
+        # for lyrics parsing
+        'selenium==3.0.1',
     ],
     dependency_links=[
         'git+https://github.com/lycantropos/VKApp.git#egg=VKApp'

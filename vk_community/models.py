@@ -7,7 +7,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from vk_app.attachables import VKPhoto, VKAudio, VKAttachable
 from vk_app.post import VKPost
 from vk_app.utils import map_non_primary_columns_by_ancestor, get_year_month_date, get_valid_dirs, get_all_subclasses
-from vk_community.services.lyrics import load_lyrics_from_musixmatch, load_lyrics_from_wikia, load_lyrics_from_azlyrics
+from vk_community.services.lyrics import load_lyrics_from_musixmatch, load_lyrics_from_wikia, load_lyrics_from_azlyrics, \
+    load_lyrics_from_genius
 
 Base = declarative_base()
 
@@ -57,6 +58,7 @@ class Audio(VKAudio, Base):
     def load_lyrics(self, web_driver: WebDriver) -> str:
         lyrics = load_lyrics_from_wikia(self.artist, self.title, web_driver) or \
                  load_lyrics_from_azlyrics(self.artist, self.title, web_driver) or \
+                 load_lyrics_from_genius(self.artist, self.title, web_driver) or \
                  load_lyrics_from_musixmatch(self.artist, self.title, web_driver)
         return lyrics
 

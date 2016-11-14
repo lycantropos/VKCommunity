@@ -164,7 +164,7 @@ class CommunityApp(App):
             post.attachments = self.reload_attachments(post.attachments, reload_path=reload_path, **params)
 
         post_id = self.post_on_wall(post, **params)
-        raw_post = self.api_session.wall.getById(posts=post_id)
+        raw_post, = self.api_session.wall.getById(posts=post_id)
         return Post.from_raw(raw_post)
 
     def post_on_wall(self, post: Post, **params) -> str:

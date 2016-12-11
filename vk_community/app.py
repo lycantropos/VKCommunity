@@ -9,7 +9,7 @@ from vk_app import App
 from vk_app.attachables import VKAttachable
 from vk_app.utils import check_dir
 from vk_community.models import Photo, Post
-from vk_community.services.data_access import check_filters, DataAccessObject
+from vk_community.services.data_access import DataAccessObject, check_filters
 from vk_community.services.images import mark_images
 
 MAX_ATTACHMENTS_LIMIT = 10
@@ -33,7 +33,8 @@ class CommunityApp(App):
                  dao: DataAccessObject = DataAccessObject('sqlite:///community_app.db')):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
-        self.community_info = self.api_session.groups.getById(group_id=self.group_id, fields='screen_name')[0]
+        self.community_info = self.api_session.groups.getById(group_id=self.group_id,
+                                                              fields='screen_name')[0]
         self.dao = dao
 
     def synchronize_and_mark(self, images_path: str, src: str, watermark: PIL.Image.Image, **params):
@@ -41,7 +42,9 @@ class CommunityApp(App):
         mark_images(images_path, watermark)
 
     def synchronize(self, images_path: str, src: str, **params):
-        """:param src: source of community photos.
+        """
+        :param images_path: path to directory containing images
+        :param src: source of community photos.
         Ex.: src="wall"
         would correspond to photos from wall posts.
 
@@ -130,7 +133,8 @@ class CommunityApp(App):
     def delete_wall_post(self, wall_post: Post):
         for attachment in wall_post.attachments:
             for key, vk_attachment in attachment:
-                params = {'owner_id': vk_attachment.owner_id, '{}_id'.format(key): vk_attachment.object_id}
+                params = {'owner_id': vk_attachment.owner_id,
+                          '{}_id'.format(key): vk_attachment.object_id}
                 self.api_session.__call__('{}.delete'.format(key), **params)
         values = dict(owner_id=wall_post.owner_id, post_id=wall_post.object_id)
         self.api_session.wall.delete(**values)
@@ -156,16 +160,18 @@ class CommunityApp(App):
 
         return photos
 
-    def duplicate_post(self, post: Post, reload_path: str = None, editor: Callable[[str], str] = lambda x: x,
-                       **params) -> Post:
+    def duplicate_post(self, post: Post, reload_path: str = None,
+                       editor: Callable[[str], str] = lambda x: x,
+                       **params) -> str:
         post.text = editor(post.text)
 
         if reload_path is not None:
-            post.attachments = self.reload_attachments(post.attachments, reload_path=reload_path, **params)
+            post.attachments = self.reload_attachments(post.attachments,
+                                                       reload_path=reload_path,
+                                                       **params)
 
         post_id = self.post_on_wall(post, **params)
-        raw_post, = self.api_session.wall.getById(posts=post_id)
-        return Post.from_raw(raw_post)
+        return post_id
 
     def post_on_wall(self, post: Post, **params) -> str:
         """Returns id of post"""
@@ -177,9 +183,13 @@ class CommunityApp(App):
             for attachment in post.attachments
             for key, content in attachment.items()
         )
-        return self.api_session.wall.post(message=message, attachments=attachments, **params)
+        response = self.api_session.wall.post(message=message,
+                                              attachments=attachments,
+                                              **params)
+        return response['post_id']
 
-    def reload_attachments(self, attachments: List[Dict[str, VKAttachable]], reload_path: str, **kwargs):
+    def reload_attachments(self, attachments: List[Dict[str, VKAttachable]],
+                           reload_path: str, **kwargs) -> List[Dict[str, VKAttachable]]:
         reloaded_attachments = download_attachments(attachments, reload_path, **kwargs)
 
         attachables_files = defaultdict(list)
@@ -202,13 +212,16 @@ class CommunityApp(App):
             upload_url = self.get_upload_server_url(
                 get_upload_server_method, group_id=self.group_id
             )
+
+            save_method = attachable_type.identify_save_method(dst_type='wall')
             response = list(
                 self.upload_files_on_vk_server(
-                    attachable_type.identify_save_method(dst_type='wall'), upload_url, files=[file],
+                    save_method, upload_url, files=[file],
                     group_id=self.group_id,
                 )
                 for file in files
             )
+
             vk_attachables = list()
             for raw_vk_attachment in response:
                 if isinstance(raw_vk_attachment, list):
@@ -218,7 +231,8 @@ class CommunityApp(App):
                 )
 
             reloaded_attachments.extend(
-                list({vk_attachable.key(): vk_attachable} for vk_attachable in vk_attachables)
+                list({vk_attachable.key(): vk_attachable}
+                     for vk_attachable in vk_attachables)
             )
 
         ordered_new_attachments = list()
@@ -238,12 +252,16 @@ class CommunityApp(App):
         filters['limit'] = filters.get('limit', 1)
         filters['posted'] = False
         random_photos = self.dao.load_photos(**filters)
-        self.post_photos_on_community_wall(random_photos, images_path=images_path, marked=filters.get('marked', False))
+        self.post_photos_on_community_wall(random_photos, images_path=images_path,
+                                           marked=filters.get('marked', False))
 
-    def post_photos_on_community_wall(self, photos: List[Photo], images_path: str, marked=False):
+    def post_photos_on_community_wall(self, photos: List[Photo], images_path: str,
+                                      marked=False):
         if len(photos) > MAX_ATTACHMENTS_LIMIT:
             logging.warning(
-                "Too many photos to post: {}, max available: {}".format(len(photos), MAX_ATTACHMENTS_LIMIT)
+                "Too many photos to post: {count}, "
+                "max available: {limit}".format(count=len(photos),
+                                                limit=MAX_ATTACHMENTS_LIMIT)
             )
             photos = photos[:MAX_ATTACHMENTS_LIMIT]
 
@@ -255,19 +273,22 @@ class CommunityApp(App):
             for photo in photos
         )
         pic_tag = 'pic'
-        image_name = pic_tag + Photo.MARKED_FILE_EXTENSION if marked else pic_tag + Photo.FILE_EXTENSION
+        image_name = ''.join([pic_tag,
+                              Photo.MARKED_FILE_EXTENSION if marked else Photo.FILE_EXTENSION])
         images = list(
             ('file{}'.format(ind), (image_name, image_content))
             for ind, image_content in enumerate(images_contents)
         )
 
-        raw_photos = self.upload_files_on_vk_server('photos.saveWallPhoto', upload_url, images, **params)
+        raw_photos = self.upload_files_on_vk_server('photos.saveWallPhoto', upload_url, images,
+                                                    **params)
 
         for ind, raw_photo in enumerate(raw_photos):
             photo = photos[ind]
             tags = [pic_tag, photo.album.replace(' ', '_')]
             message = '\n'.join([
-                photo.text or '', '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name']) for tag in tags)
+                photo.text or '', '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name'])
+                                            for tag in tags)
             ])
             self.api_session.wall.post(
                 access_token=self.access_token,

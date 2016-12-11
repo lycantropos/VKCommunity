@@ -160,11 +160,11 @@ def open_url(url, web_driver):
                 continue
 
 
-def close_tab(switch_to, web_driver: WebDriver):
+def close_tab(window, web_driver: WebDriver):
     while True:
         try:
             web_driver.close()
-            web_driver.switch_to.window(switch_to)
+            web_driver.switch_to.window(window)
             return
         except TimeoutException:
             continue

@@ -210,12 +210,12 @@ class CommunityApp(App):
                     )
 
         for attachable_type, files in attachables_files.items():
-            get_upload_server_method = attachable_type.identify_getUploadServer_method(dst_type='wall')
+            get_upload_server_method = attachable_type.getUploadServer_method(dst_type='wall')
             upload_url = self.get_upload_server_url(
                 get_upload_server_method, group_id=self.group_id
             )
 
-            save_method = attachable_type.identify_save_method(dst_type='wall')
+            save_method = attachable_type.save_method(dst_type='wall')
             response = list(
                 self.upload_files_on_vk_server(
                     save_method, upload_url, files=[file],

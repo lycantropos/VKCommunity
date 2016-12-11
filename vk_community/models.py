@@ -4,8 +4,8 @@ from mutagen import File, id3
 from selenium.webdriver.remote.webdriver import WebDriver
 from sqlalchemy import Column, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from vk_app.attachables import VKPhoto, VKAudio, VKAttachable
-from vk_app.post import VKPost
+from vk_app.models import VKPhoto, VKAudio, VKPost
+from vk_app.models.objects import VKAttachable
 from vk_app.utils import map_non_primary_columns_by_ancestor, get_year_month_date, get_valid_dirs, get_all_subclasses
 from vk_community.services.lyrics import load_lyrics_from_musixmatch, load_lyrics_from_wikia, load_lyrics_from_azlyrics, \
     load_lyrics_from_genius

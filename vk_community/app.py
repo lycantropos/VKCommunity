@@ -6,7 +6,7 @@ from typing import List, Callable, Dict
 
 import PIL.Image
 from vk_app import App
-from vk_app.attachables import VKAttachable
+from vk_app.models.attachables import VKAttachable
 from vk_app.utils import check_dir
 from vk_community.models import Photo, Post
 from vk_community.services.data_access import DataAccessObject, check_filters
@@ -22,7 +22,8 @@ def download_attachments(attachments, reload_path, **kwargs):
             try:
                 attachable.download(reload_path, **kwargs)
             except AttributeError:
-                logging.exception('Cannot download attachment of type: `{}`'.format(type(attachable)))
+                logging.exception('Can\'t download attachment of type: "{}"'
+                                  .format(type(attachable)))
                 unloaded_attachments.append({key: attachable})
     return unloaded_attachments
 
@@ -37,7 +38,8 @@ class CommunityApp(App):
                                                               fields='screen_name')[0]
         self.dao = dao
 
-    def synchronize_and_mark(self, images_path: str, src: str, watermark: PIL.Image.Image, **params):
+    def synchronize_and_mark(self, images_path: str, src: str, watermark: PIL.Image.Image,
+                             **params):
         self.synchronize(images_path, src, **params)
         mark_images(images_path, watermark)
 
@@ -287,8 +289,9 @@ class CommunityApp(App):
             photo = photos[ind]
             tags = [pic_tag, photo.album.replace(' ', '_')]
             message = '\n'.join([
-                photo.text or '', '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name'])
-                                            for tag in tags)
+                photo.text or '',
+                '\n'.join('#{}@{}'.format(tag, self.community_info['screen_name'])
+                          for tag in tags)
             ])
             self.api_session.wall.post(
                 access_token=self.access_token,

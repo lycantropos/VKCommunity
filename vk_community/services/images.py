@@ -1,7 +1,7 @@
 import logging
 import os
 
-import PIL.Image
+from PIL import Image
 import numpy as np
 from skimage import img_as_float
 
@@ -32,12 +32,12 @@ def alpha_composite(src: np.ndarray, dst: np.ndarray) -> np.ndarray:
     return out
 
 
-def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image):
+def paste_watermark(image: Image.Image, watermark: Image.Image) -> Image.Image:
     min_image_dimension = min(image.size)
     watermark_length = int(min_image_dimension / 4.)
 
     watermark_size = (watermark_length, watermark_length)
-    watermark = watermark.resize(watermark_size, PIL.Image.ANTIALIAS)
+    watermark = watermark.resize(watermark_size, Image.ANTIALIAS)
 
     foreground_shape = (image.size[1], image.size[0], 4)
 
@@ -56,17 +56,17 @@ def paste_watermark(image: PIL.Image.Image, watermark: PIL.Image.Image):
         foreground_array = np.dstack((foreground_rgb, foreground_alpha))
 
     marked_image_array = alpha_composite(foreground_array, image_array)
-    return PIL.Image.fromarray(marked_image_array, mode='RGBA')
+    return Image.fromarray(marked_image_array, mode='RGBA')
 
 
-def mark_images(images_path: str, watermark: PIL.Image.Image):
+def mark_images(images_path: str, watermark: Image.Image):
     for folder, _, files in os.walk(images_path):
         for file_path in files:
             if file_path.endswith('.jpg'):
                 image_path = os.path.join(folder, file_path)
                 save_path = image_path.replace('.jpg', '.png')
                 if not os.path.exists(save_path):
-                    image = PIL.Image.open(image_path)
+                    image = Image.open(image_path)
                     image = image.convert('RGBA')
                     logging.info(save_path)
                     marked_image = paste_watermark(image, watermark=watermark)

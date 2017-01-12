@@ -6,9 +6,13 @@ from sqlalchemy import Column, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from vk_app.models import VKPhoto, VKAudio, VKPost
 from vk_app.models.objects import VKAttachable
-from vk_app.utils import map_non_primary_columns_by_ancestor, get_year_month_date, get_valid_dirs, get_all_subclasses
-from vk_community.services.lyrics import load_lyrics_from_musixmatch, load_lyrics_from_wikia, load_lyrics_from_azlyrics, \
-    load_lyrics_from_genius
+from vk_app.utils import (map_non_primary_columns_by_ancestor, get_year_month_date,
+                          get_valid_dirs, get_all_subclasses)
+
+from vk_community.services.lyrics import (load_lyrics_from_musixmatch,
+                                          load_lyrics_from_wikia,
+                                          load_lyrics_from_azlyrics,
+                                          load_lyrics_from_genius)
 
 Base = declarative_base()
 
@@ -29,7 +33,7 @@ class Photo(VKPhoto, Base):
 
 
 class Audio(VKAudio, Base):
-    __tablename__ = 'meta'
+    __tablename__ = 'audio'
     __table_args__ = {
         'mysql_charset': 'utf8'
     }
@@ -68,8 +72,6 @@ map_non_primary_columns_by_ancestor(ancestor=VKAudio, inheritor=Audio)
 
 
 class Post(VKPost):
-    VK_ATTACHABLE_BY_KEY = dict(
-        (inheritor.key(), inheritor)
-        for inheritor in get_all_subclasses(VKAttachable)
-        if inheritor.key() is not None
-    )
+    VK_ATTACHABLE_BY_KEY = {inheritor.key(): inheritor
+                            for inheritor in get_all_subclasses(VKAttachable)
+                            if inheritor.key() is not None}

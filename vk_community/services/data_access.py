@@ -10,9 +10,13 @@ from vk_community.models import Photo
 class DataAccessObject:
     def __init__(self, database_url: str):
         self.engine = create_engine(database_url, echo=False)
-        self.session = sessionmaker(bind=self.engine)()
+        self.session_maker = sessionmaker(bind=self.engine)
 
-    def __del__(self):
+    def __enter__(self):
+        self.session = self.session_maker()
+        return self.session
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
     def save_photos(self, photos: List[Photo]):
@@ -95,7 +99,7 @@ def check_filters(filters):
     posted = filters.get('posted')
     if posted is not None:
         posted = int(posted)
-        if posted not in [0, 1]:
+        if posted not in {0, 1}:
             raise ValueError("'posted' filter parameter should be `bool` type value or "
                              "`int` type value from range {0, 1}")
         filters['posted'] = posted == 1
@@ -103,7 +107,7 @@ def check_filters(filters):
     marked = filters.get('marked')
     if marked is not None:
         marked = int(marked)
-        if marked not in [0, 1]:
+        if marked not in {0, 1}:
             raise ValueError("'marked' filter parameter should be `bool` type value or "
                              "`int` type value from range {0, 1}")
         filters['marked'] = marked == 1
@@ -111,7 +115,7 @@ def check_filters(filters):
     random = filters.get('random')
     if random is not None:
         random = int(random)
-        if random not in [0, 1]:
+        if random not in {0, 1}:
             raise ValueError("'random' filter parameter should be `bool` type value or "
                              "`int` type value from range {0, 1}")
         filters['random'] = random == 1

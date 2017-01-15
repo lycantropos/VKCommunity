@@ -30,13 +30,12 @@ def with_session(function: Callable[..., Any]):
 
 
 class CommunityApp(App):
-    def __init__(self, app_id: int = 0, group_id: int = 1,
-                 user_login: str = '', user_password: str = '',
-                 scope: str = '', access_token: str = None,
-                 api_version: str = '5.57',
+    def __init__(self, app_id: int = 0, group_id: int = 1, user_login: str = '',
+                 user_password: str = '', scope: str = '', api_version: str = '5.57',
                  dao: DataAccessObject = DataAccessObject('sqlite:///community_app.db')):
-        super().__init__(app_id, user_login, user_password, scope, access_token,
-                         api_version)
+        # it's not available to use VK developers documentation page tool
+        # with access token only
+        super().__init__(app_id, user_login, user_password, scope, api_version)
         self.group_id = group_id
         self.community_info = self.api_session.groups.getById(group_id=self.group_id,
                                                               fields='screen_name')[0]

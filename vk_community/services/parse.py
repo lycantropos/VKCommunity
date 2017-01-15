@@ -5,7 +5,6 @@ from typing import Dict, Any, Iterable, Tuple, List
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import wait, expected_conditions
-from vk_app.models.objects import VKAttachable
 from vk_community.services.lyrics import open_url
 
 
@@ -22,7 +21,7 @@ def parse_from_vk_dev(url: str, web_driver: WebDriver):
     res = web_driver.find_element_by_xpath('//*[@id="dev_result"]')
     links = [element.get_attribute('href')
              for element in res.find_elements_by_tag_name('a')]
-    _, json = load_vk_json(res.text)
+    json = load_vk_json(res.text)
     for item in json['response']['items']:
         for attachment in item.get('attachments', []):
             type_ = attachment['type']
@@ -40,7 +39,7 @@ def load_vk_json(vk_json: str) -> Dict[str, Any]:
         raise ValueError('JSON should be surrounded by braces.')
     vk_json = vk_json[1:-1].strip()
     lines = vk_json.split('\n')
-    json = parse_object(lines)
+    _, json = parse_object(lines)
     return json
 
 
@@ -135,23 +134,3 @@ def get_full_link(link: str, full_links: Iterable[str]):
         except StopIteration as exc:
             logging.exception(exc)
     return link
-
-
-def download_attachments(attachments: Iterable[Dict[str, VKAttachable]],
-                         reload_path: str, **kwargs):
-    unloaded_attachments = list()
-    for attachment in attachments:
-        for key, attachable in attachment.items():
-            try:
-                attachable.download(reload_path, **kwargs)
-            except AttributeError:
-                logging.exception('Can\'t download attachment of type: "{}"'
-                                  .format(type(attachable)))
-                unloaded_attachments.append({key: attachable})
-    return unloaded_attachments
-
-
-def generate_file_name(attachable: VKAttachable, ind: int) -> str:
-    return ''.join([attachable.key(),
-                    str(ind),
-                    attachable.get_file_extension()])

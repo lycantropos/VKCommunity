@@ -3,20 +3,19 @@ import logging
 import os
 from collections import defaultdict
 from functools import wraps
-from typing import List, Callable, Dict, Any
+from typing import List, Callable, Dict, Any, Iterable
 from urllib.parse import urlencode, urlparse, urlunparse
 
 import PIL.Image
 from selenium.webdriver.remote.webdriver import WebDriver
 from vk_app import App
-from vk_app.models.attachables import VKAttachable
+from vk_app.models.objects import VKAttachable
 from vk_app.utils import check_dir
 from vk_community.models import Photo, Post
 from vk_community.services.data_access import DataAccessObject, check_filters
 from vk_community.services.images import mark_images
 from vk_community.services.lyrics import open_url
-from vk_community.utils import parse_from_vk_dev, download_attachments, \
-    generate_file_name
+from vk_community.services.parse import parse_from_vk_dev
 
 MAX_ATTACHMENTS_LIMIT = 10
 
@@ -227,7 +226,9 @@ class CommunityApp(App):
                 continue
             for attachable in attachment.values():
                 file_path = attachable.get_file_path(reload_path)
-                file_name = generate_file_name(attachable, ind)
+                file_name = ''.join([attachable.key(),
+                                     str(ind),
+                                     attachable.get_file_extension()])
                 with open(file_path, mode='rb') as file:
                     attachable_file = ('file', (file_name, file.read()))
                 attachables_files[type(attachable)].append(attachable_file)
@@ -321,3 +322,17 @@ class CommunityApp(App):
             photo.date_time = datetime.datetime.utcnow()
 
         self.dao.save_photos(photos)
+
+
+def download_attachments(attachments: Iterable[Dict[str, VKAttachable]],
+                         reload_path: str, **kwargs):
+    unloaded_attachments = list()
+    for attachment in attachments:
+        for key, attachable in attachment.items():
+            try:
+                attachable.download(reload_path, **kwargs)
+            except AttributeError:
+                logging.exception('Can\'t download attachment of type: "{}"'
+                                  .format(type(attachable)))
+                unloaded_attachments.append({key: attachable})
+    return unloaded_attachments

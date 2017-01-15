@@ -65,7 +65,8 @@ class UnitTestsDataAccess(unittest.TestCase):
 
 class UnitTestsExceptionsDataAccess(unittest.TestCase):
     def test_check_filters_bad_int_parameters(self):
-        # owner id may be integer or string representing integer with hyphen for negative values, dash is not an option
+        # owner id may be integer or string representing integer
+        # with hyphen for negative values, dash is not an option
         self.assertRaises(ValueError, check_filters, dict(owner_id='–14'))
         # classic example with typos like 1-l, o-0
         self.assertRaises(ValueError, check_filters, dict(limit='l40'))

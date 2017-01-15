@@ -4,30 +4,21 @@ import os
 from collections import defaultdict
 from functools import wraps
 from typing import List, Callable, Dict, Any
+from urllib.parse import urlencode, urlparse, urlunparse
 
 import PIL.Image
+from selenium.webdriver.remote.webdriver import WebDriver
 from vk_app import App
 from vk_app.models.attachables import VKAttachable
 from vk_app.utils import check_dir
-
 from vk_community.models import Photo, Post
 from vk_community.services.data_access import DataAccessObject, check_filters
 from vk_community.services.images import mark_images
+from vk_community.services.lyrics import open_url
+from vk_community.utils import parse_from_vk_dev, download_attachments, \
+    generate_file_name
 
 MAX_ATTACHMENTS_LIMIT = 10
-
-
-def download_attachments(attachments, reload_path, **kwargs):
-    unloaded_attachments = list()
-    for attachment in attachments:
-        for key, attachable in attachment.items():
-            try:
-                attachable.download(reload_path, **kwargs)
-            except AttributeError:
-                logging.exception('Can\'t download attachment of type: "{}"'
-                                  .format(type(attachable)))
-                unloaded_attachments.append({key: attachable})
-    return unloaded_attachments
 
 
 def with_session(function: Callable[..., Any]):
@@ -37,13 +28,6 @@ def with_session(function: Callable[..., Any]):
             return function(self, *args, **kwargs)
 
     return decorated
-
-
-def generate_file_name(attachable: VKAttachable, ind: int):
-    file_name = ''.join([attachable.key(),
-                         str(ind),
-                         attachable.get_file_extension()])
-    return file_name
 
 
 class CommunityApp(App):
@@ -145,13 +129,39 @@ class CommunityApp(App):
                   if key == Photo.key()]
         return photos
 
-    def load_posts(self, **params) -> List[Post]:
+    def load_posts(self, *, web_driver: WebDriver = None, **params) -> List[Post]:
         params.setdefault('owner_id', -self.group_id)
-
-        raw_posts = self.get_all_objects('wall.get', **params)
-        posts = [Post.from_raw(raw_post)
-                 for raw_post in raw_posts]
-        return posts
+        if web_driver is None:
+            raw_posts = self.get_all_objects('wall.get', **params)
+        else:
+            open_url('https://vk.com', web_driver)
+            login = web_driver.find_element_by_xpath('//*[@id="index_email"]')
+            login.clear()
+            login.send_keys(self.user_login)
+            password = web_driver.find_element_by_xpath('//*[@id="index_pass"]')
+            password.clear()
+            password.send_keys(self.user_password)
+            web_driver.find_element_by_xpath('//*[@id="index_login_button"]').click()
+            url_parts = list(urlparse('https://vk.com/dev/wall.get'))
+            count = 100
+            query = {'params[owner_id]': params['owner_id'],
+                     'params[count]': count,
+                     'params[offset]': params.get('offset', 0),
+                     'params[filter]': params.get('filter', 'owner'),
+                     'params[fields]': params.get('fields', ''),
+                     'params[v]': self.api_version}
+            url_parts[4] = urlencode(query)
+            url = urlunparse(url_parts)
+            response = parse_from_vk_dev(url, web_driver)['response']
+            total_count = response['count']
+            raw_posts = response['items']
+            while len(raw_posts) < total_count:
+                query['params[offset]'] += count
+                url_parts[4] = urlencode(query)
+                url = urlunparse(url_parts)
+                response = parse_from_vk_dev(url, web_driver)['response']
+                raw_posts += response['items']
+        return [Post.from_raw(raw_post) for raw_post in raw_posts]
 
     def delete_wall_post(self, wall_post: Post):
         for attachment in wall_post.attachments:
@@ -199,11 +209,9 @@ class CommunityApp(App):
         params.setdefault('owner_id', -self.group_id)
         params.setdefault('from_group', 1)
         message = post.text
-        attachments = ','.join(
-            '{key}{vk_id}'.format(key=key, vk_id=content.vk_id)
-            for attachment in post.attachments
-            for key, content in attachment.items()
-        )
+        attachments = ','.join('{key}{vk_id}'.format(key=key, vk_id=content.vk_id)
+                               for attachment in post.attachments
+                               for key, content in attachment.items())
         response = self.api_session.wall.post(message=message,
                                               attachments=attachments,
                                               **params)
@@ -221,9 +229,8 @@ class CommunityApp(App):
                 file_path = attachable.get_file_path(reload_path)
                 file_name = generate_file_name(attachable, ind)
                 with open(file_path, mode='rb') as file:
-                    attachables_files[type(attachable)].append(
-                        ('file',
-                         (file_name, file.read())))
+                    attachable_file = ('file', (file_name, file.read()))
+                attachables_files[type(attachable)].append(attachable_file)
 
         for attachable_type, files in attachables_files.items():
             get_upload_server_method = (attachable_type

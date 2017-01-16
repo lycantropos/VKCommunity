@@ -31,11 +31,14 @@ def with_session(function: Callable[..., Any]):
 
 class CommunityApp(App):
     def __init__(self, app_id: int = 0, group_id: int = 1, user_login: str = '',
-                 user_password: str = '', scope: str = '', api_version: str = '5.57',
+                 user_password: str = '', scope: str = '', api_version: str = '5.62',
                  dao: DataAccessObject = DataAccessObject('sqlite:///community_app.db')):
         # it's not available to use VK developers documentation page tool
         # with access token only
-        super().__init__(app_id, user_login, user_password, scope, api_version)
+        super().__init__(app_id=app_id,
+                         user_login=user_login, user_password=user_password,
+                         scope=scope,
+                         api_version=api_version)
         self.group_id = group_id
         self.community_info = self.api_session.groups.getById(group_id=self.group_id,
                                                               fields='screen_name')[0]
